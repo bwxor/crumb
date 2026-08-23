@@ -1,0 +1,6 @@
+.piejfx-claude-agent-plugin-message {
+    -fx-background-color: bg-hover;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-padding: 4px;
+}

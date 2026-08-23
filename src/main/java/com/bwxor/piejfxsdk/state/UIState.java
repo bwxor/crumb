@@ -11,6 +11,7 @@ public class UIState {
     private VBox claudeAnswerHomeVBox;
     private VBox claudeAnswerTextVBox;
     private VBox sessionVBox;
+    private VBox messageHistoryVBox;
     public static final UIState instance = new UIState();
 
     public ListView getStagedListView() {
@@ -67,5 +68,13 @@ public class UIState {
 
     public void setSessionVBox(VBox sessionVBox) {
         this.sessionVBox = sessionVBox;
+    }
+
+    public VBox getMessageHistoryVBox() {
+        return messageHistoryVBox;
+    }
+
+    public void setMessageHistoryVBox(VBox messageHistoryVBox) {
+        this.messageHistoryVBox = messageHistoryVBox;
     }
 }

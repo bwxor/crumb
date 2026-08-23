@@ -2,6 +2,7 @@ package com.bwxor.piejfxsdk.factory;
 
 import com.bwxor.piejfxsdk.state.ServiceState;
 import com.bwxor.piejfxsdk.state.UIState;
+import com.bwxor.piejfxsdk.type.Role;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -89,10 +90,12 @@ public class TabFactory {
 
     private static VBox createClaudeAnswerTextVBox() {
         UIState uiState = UIState.instance;
+        ServiceState serviceState = ServiceState.instance;
 
         var vBox = new VBox();
         VBox.setVgrow(vBox, Priority.ALWAYS);
         vBox.setPadding(new Insets(3));
+        vBox.setSpacing(3);
 
         var hBox = new HBox();
         var region = new Region(); // for button to float right
@@ -111,14 +114,19 @@ public class TabFactory {
 
         hBox.getChildren().addAll(region, button);
 
-        var textArea = new TextArea();
+        var scrollPane = new ScrollPane();
 
-        textArea.setText("This is just a dummy text. Claude should generate something better :)");
-        textArea.setEditable(false);
-        textArea.setWrapText(true);
-        VBox.setVgrow(textArea, Priority.ALWAYS);
+        var messageHistoryVBox = new VBox();
+        messageHistoryVBox.setSpacing(5);
+        messageHistoryVBox.getStylesheets().add(serviceState.getResourceService().getResourceByName("styles/styles.css").toExternalForm());
+        scrollPane.setContent(messageHistoryVBox);
+        scrollPane.setFitToWidth(true);
 
-        vBox.getChildren().addAll(hBox, textArea);
+        uiState.setMessageHistoryVBox(messageHistoryVBox);
+
+        VBox.setVgrow(scrollPane, Priority.ALWAYS);
+
+        vBox.getChildren().addAll(hBox, scrollPane);
 
         return vBox;
     }
@@ -128,13 +136,19 @@ public class TabFactory {
 
         var textArea = new TextArea();
         textArea.setPromptText("How can I help you today?");
+        textArea.setWrapText(true);
         textArea.setOnKeyPressed(
                 e -> {
                     if (e.getCode().equals(KeyCode.ENTER) && !e.isShiftDown()) {
+                        // todo check if session active, if not create a new one
                         uiState.getClaudeAnswerHomeVBox().setVisible(false);
                         uiState.getClaudeAnswerHomeVBox().setManaged(false);
                         uiState.getClaudeAnswerTextVBox().setVisible(true);
                         uiState.getClaudeAnswerTextVBox().setManaged(true);
+
+                        // todo dummy output
+                        uiState.getMessageHistoryVBox().getChildren().add(MessageFactory.createMessage(Role.USER, textArea.getText()));
+
                         textArea.clear();
                         e.consume();
                     }

@@ -1,12 +1,10 @@
 package com.bwxor.piejfxsdk.state;
 
+import com.bwxor.piejfxsdk.type.Role;
+
 import java.util.List;
 
 public class SessionState {
-    private static enum Role {
-        USER, ASSISTANT;
-    }
-
     private static class Conversation {
         private Role role;
         private String message;
