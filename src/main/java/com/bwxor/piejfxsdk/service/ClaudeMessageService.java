@@ -17,8 +17,8 @@ public class ClaudeMessageService {
     private AnthropicClient client;
     private Model model;
 
-    public ClaudeMessageService() {
-        this.client = AnthropicOkHttpClient.builder().fromEnv().build();
+    public ClaudeMessageService(String apiKey) {
+        this.client = AnthropicOkHttpClient.builder().apiKey(apiKey).build();
         this.model = Model.CLAUDE_HAIKU_4_5;
     }
 

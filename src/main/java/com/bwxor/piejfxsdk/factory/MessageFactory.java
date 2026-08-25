@@ -1,16 +1,15 @@
 package com.bwxor.piejfxsdk.factory;
 
+import com.bwxor.piejfxsdk.control.StyledMarkdownView;
 import com.bwxor.piejfxsdk.state.UIState;
-import com.bwxor.piejfxsdk.type.Role;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.control.Label;
+import one.jpro.platform.mdfx.MarkdownView;
 
 public class MessageFactory {
-    public static Label createMessage(Role role, String message) {
+    public static Label createUserMessage(String message) {
         UIState uiState = UIState.instance;
-
-        // todo do something with the role
 
         var label = new Label();
 
@@ -18,12 +17,17 @@ public class MessageFactory {
         label.setWrapText(true);
         label.setPadding(new Insets(2));
         label.prefWidthProperty().bind(uiState.getMessageHistoryVBox().widthProperty());
-        label.getStyleClass().add("crumb-message");
+        label.getStyleClass().add("crumb-user-message");
 
         label.setMinWidth(0);
         label.setMaxWidth(Double.MAX_VALUE);
         label.setAlignment(Pos.CENTER_LEFT);
 
         return label;
+    }
+
+    public static MarkdownView createAssistantMessage(String message) {
+        var markdown = new StyledMarkdownView(message);
+        return markdown;
     }
 }

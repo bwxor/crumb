@@ -8,6 +8,7 @@ module com.bwxor.piejfxsdk {
     requires java.sql;
     requires anthropic.java.core;
     requires anthropic.java.client.okhttp;
+    requires one.jpro.platform.mdfx;
 
     opens com.bwxor.piejfxsdk to javafx.fxml;
     exports com.bwxor.piejfxsdk;

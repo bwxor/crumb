@@ -2,7 +2,7 @@ package com.bwxor.piejfxsdk.factory;
 
 import com.bwxor.piejfxsdk.state.ServiceState;
 import com.bwxor.piejfxsdk.state.UIState;
-import com.bwxor.piejfxsdk.type.Role;
+import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
@@ -18,7 +18,7 @@ import javafx.scene.text.TextAlignment;
 
 public class TabFactory {
     public static Tab createClaudeAgentTab() {
-        Tab tab = new Tab("Claude");
+        Tab tab = new Tab("Crumb");
 
         SplitPane mainSplitPane = new SplitPane();
         mainSplitPane.setOrientation(Orientation.VERTICAL);
@@ -65,7 +65,7 @@ public class TabFactory {
         imageView.setFitHeight(125);
         imageView.setPreserveRatio(true);
 
-        Label label = new Label("Hi there, I'm your specialized Claude Agent for Pie. How can I help you today?");
+        Label label = new Label("Hi there, I'm your specialized AI Agent for Pie. How can I help you today?");
         label.setFont(javafx.scene.text.Font.font(14));
         label.setWrapText(true);
         label.setAlignment(Pos.BASELINE_CENTER);
@@ -133,6 +133,7 @@ public class TabFactory {
 
     private static VBox createClaudeAgentChatPane() {
         UIState uiState = UIState.instance;
+        ServiceState serviceState = ServiceState.instance;
 
         var textArea = new TextArea();
         textArea.setPromptText("How can I help you today?");
@@ -140,16 +141,29 @@ public class TabFactory {
         textArea.setOnKeyPressed(
                 e -> {
                     if (e.getCode().equals(KeyCode.ENTER) && !e.isShiftDown()) {
+                        if (serviceState.getClaudeMessageService() == null) {
+                            textArea.clear();
+                            textArea.setEditable(true);
+                            serviceState.getNotificationService().showNotificationOk("Please insert your Claude API Key in the configuration file.");
+                            return;
+                        }
+
                         // todo check if session active, if not create a new one
                         uiState.getClaudeAnswerHomeVBox().setVisible(false);
                         uiState.getClaudeAnswerHomeVBox().setManaged(false);
                         uiState.getClaudeAnswerTextVBox().setVisible(true);
                         uiState.getClaudeAnswerTextVBox().setManaged(true);
 
-                        // todo dummy output
-                        uiState.getMessageHistoryVBox().getChildren().add(MessageFactory.createMessage(Role.USER, textArea.getText()));
-
+                        String text = textArea.getText();
+                        textArea.setEditable(false);
                         textArea.clear();
+
+                        uiState.getMessageHistoryVBox().getChildren().add(MessageFactory.createUserMessage(text));
+
+                        Thread thread = new Thread(createAssistantTask(textArea, text), "claude-chat-request");
+                        thread.setDaemon(true);
+                        thread.start();
+
                         e.consume();
                     }
                 }
@@ -157,6 +171,31 @@ public class TabFactory {
         VBox.setVgrow(textArea, Priority.ALWAYS);
         var vbox = new VBox(textArea);
         return vbox;
+    }
+
+    private static Task createAssistantTask(TextArea textArea, String text) {
+        ServiceState serviceState = ServiceState.instance;
+        UIState uiState = UIState.instance;
+
+        Task<String> task = new Task<String>() {
+            @Override
+            protected String call() {
+                String result[] = new String[1];
+
+                serviceState.getClaudeMessageService().sendSingleMessage(text, t -> {
+                    result[0] = t;
+                });
+
+                return result[0];
+            }
+        };
+
+        task.setOnSucceeded(event -> {
+            uiState.getMessageHistoryVBox().getChildren().add(MessageFactory.createAssistantMessage(task.getValue()));
+            textArea.setEditable(true);
+        });
+
+        return task;
     }
 
 }

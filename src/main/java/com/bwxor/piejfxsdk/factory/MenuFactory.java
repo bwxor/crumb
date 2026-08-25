@@ -1,16 +1,20 @@
 package com.bwxor.piejfxsdk.factory;
 
+import com.bwxor.piejfxsdk.state.ConfigurationState;
 import com.bwxor.piejfxsdk.state.ServiceState;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuItem;
 
+import java.nio.file.Paths;
+
 public class MenuFactory {
     public static Menu createClaudeAgentMenu() {
         ServiceState serviceState = ServiceState.instance;
+        ConfigurationState configurationState = ConfigurationState.instance;
 
-        Menu menu = new Menu("Claude");
+        Menu menu = new Menu("Crumb");
         MenuItem settingsMenuItem = new MenuItem("Settings");
-        settingsMenuItem.setOnAction(_ -> {});
+        settingsMenuItem.setOnAction(_ -> serviceState.getFileService().openFile(Paths.get(configurationState.getConfigurationDirectory().toString(), "config.json").toFile()));
         menu.getItems().add(settingsMenuItem);
 
         return menu;

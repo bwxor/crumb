@@ -13,6 +13,7 @@ import javafx.scene.input.KeyEvent;
 import java.io.File;
 import java.io.IOException;
 import java.net.URL;
+import java.nio.file.Paths;
 
 public class CrumbPlugin implements Plugin {
     private PluginContext pluginContext;
@@ -22,12 +23,12 @@ public class CrumbPlugin implements Plugin {
         ServiceState serviceState = ServiceState.instance;
         StylesheetState stylesheetState = StylesheetState.instance;
         UIState uiState = UIState.instance;
+        ConfigurationState configurationState = ConfigurationState.instance;
 
         serviceState.setConfigurationService(new ConfigurationService());
         serviceState.setFileService(pluginContext.getServiceContainer().getFileService());
         serviceState.setNotificationService(pluginContext.getServiceContainer().getNotificationService());
         serviceState.setResourceService(new ResourceService());
-        serviceState.setClaudeMessageService(new ClaudeMessageService());
 
         stylesheetState.setThemeURL(pluginContext.getStylesheets().getThemeURL());
         stylesheetState.setDefaultStylesheetURL(pluginContext.getStylesheets().getDefaultStylesURL());
@@ -40,6 +41,12 @@ public class CrumbPlugin implements Plugin {
 
         try {
             serviceState.getConfigurationService().loadCredentials();
+
+            if (configurationState.getApiKey() != null && !configurationState.getApiKey().trim().isEmpty()) {
+                serviceState.setClaudeMessageService(new ClaudeMessageService(configurationState.getApiKey()));
+            } else {
+                serviceState.getNotificationService().showNotificationOk("Please insert your Claude API Key in the configuration file.");
+            }
         } catch (IOException e) {
             serviceState.getNotificationService().showNotificationOk("Error loading your Claude Agent configuration.");
         }
@@ -54,7 +61,20 @@ public class CrumbPlugin implements Plugin {
 
     @Override
     public void onSaveFile(File file) {
+        ConfigurationState configurationState = ConfigurationState.instance;
+        ServiceState serviceState = ServiceState.instance;
 
+        if (file.getPath().equals(Paths.get(configurationState.getConfigurationDirectory().toString(), "config.json").toString())) {
+            try {
+                serviceState.getConfigurationService().loadCredentials();
+
+                if (configurationState.getApiKey() != null && !configurationState.getApiKey().trim().isEmpty()) {
+                    serviceState.setClaudeMessageService(new ClaudeMessageService(configurationState.getApiKey()));
+                }
+            } catch (IOException e) {
+                serviceState.getNotificationService().showNotificationOk("Error loading your Crumb configuration.");
+            }
+        }
     }
 
     @Override

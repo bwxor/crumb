@@ -1,6 +1,18 @@
-.crumb-message {
+.crumb-user-message {
     -fx-background-color: bg-hover;
     -fx-background-radius: 8px;
     -fx-border-radius: 8px;
     -fx-padding: 4px;
+}
+
+.markdown-view {
+    -fx-background-color: bg-hover;
+    -fx-text-fill: text-primary;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-padding: 4px;
+}
+
+.markdown-text {
+    -fx-fill: text-primary;
 }
