@@ -2,6 +2,7 @@ package com.bwxor.piejfxsdk;
 
 import com.bwxor.piejfxsdk.factory.MenuFactory;
 import com.bwxor.piejfxsdk.factory.TabFactory;
+import com.bwxor.piejfxsdk.service.ClaudeMessageService;
 import com.bwxor.piejfxsdk.service.ConfigurationService;
 import com.bwxor.piejfxsdk.service.ResourceService;
 import com.bwxor.piejfxsdk.state.*;
@@ -13,7 +14,7 @@ import java.io.File;
 import java.io.IOException;
 import java.net.URL;
 
-public class ClaudeAgentPlugin implements Plugin {
+public class CrumbPlugin implements Plugin {
     private PluginContext pluginContext;
 
     @Override
@@ -26,6 +27,7 @@ public class ClaudeAgentPlugin implements Plugin {
         serviceState.setFileService(pluginContext.getServiceContainer().getFileService());
         serviceState.setNotificationService(pluginContext.getServiceContainer().getNotificationService());
         serviceState.setResourceService(new ResourceService());
+        serviceState.setClaudeMessageService(new ClaudeMessageService());
 
         stylesheetState.setThemeURL(pluginContext.getStylesheets().getThemeURL());
         stylesheetState.setDefaultStylesheetURL(pluginContext.getStylesheets().getDefaultStylesURL());

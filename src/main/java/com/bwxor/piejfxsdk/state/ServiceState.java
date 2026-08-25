@@ -1,5 +1,6 @@
 package com.bwxor.piejfxsdk.state;
 
+import com.bwxor.piejfxsdk.service.ClaudeMessageService;
 import com.bwxor.piejfxsdk.service.ConfigurationService;
 import com.bwxor.piejfxsdk.service.ResourceService;
 import com.bwxor.plugin.service.PluginFileService;
@@ -10,6 +11,7 @@ public class ServiceState {
     private PluginFileService fileService;
     private PluginNotificationService notificationService;
     private ResourceService resourceService;
+    private ClaudeMessageService claudeMessageService;
     public static final ServiceState instance = new ServiceState();
 
     private ServiceState() {}
@@ -44,5 +46,13 @@ public class ServiceState {
 
     public void setResourceService(ResourceService resourceService) {
         this.resourceService = resourceService;
+    }
+
+    public ClaudeMessageService getClaudeMessageService() {
+        return claudeMessageService;
+    }
+
+    public void setClaudeMessageService(ClaudeMessageService claudeMessageService) {
+        this.claudeMessageService = claudeMessageService;
     }
 }

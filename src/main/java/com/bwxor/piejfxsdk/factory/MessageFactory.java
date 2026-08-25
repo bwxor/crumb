@@ -18,7 +18,7 @@ public class MessageFactory {
         label.setWrapText(true);
         label.setPadding(new Insets(2));
         label.prefWidthProperty().bind(uiState.getMessageHistoryVBox().widthProperty());
-        label.getStyleClass().add("piejfx-claude-agent-plugin-message");
+        label.getStyleClass().add("crumb-message");
 
         label.setMinWidth(0);
         label.setMaxWidth(Double.MAX_VALUE);
