@@ -2,12 +2,25 @@
     -fx-background-color: bg-hover;
     -fx-background-radius: 8px;
     -fx-border-radius: 8px;
-    -fx-padding: 4px;
+    -fx-padding: 6px;
 }
 
 .markdown-view {
-    -fx-background-color: bg-hover;
-    -fx-text-fill: text-primary;
+    -mdfx-font-color: bg-hover;
+    -mdfx-link-color: bg-hover;
+    -mdfx-border-color-1: bg-hover;
+
+    -mdfx-bg-color-1: bg-hover;
+    -mdfx-bg-color-2: bg-hover;
+    -mdfx-bg-color-3: bg-hover;
+
+    -mdfx-bq-color-border: bg-hover;
+    -mdfx-bq-color-background: bg-hover;
+    -mdfx-bq-text-fill: bg-hover;
+
+    -mdfx-code-block-border: bg-hover;
+    -mdfx-code-block-background: bg-hover;
+
     -fx-background-radius: 8px;
     -fx-border-radius: 8px;
     -fx-padding: 4px;
@@ -15,4 +28,213 @@
 
 .markdown-text {
     -fx-fill: text-primary;
+}
+
+.markdown-italic {
+    -fx-font-style: italic;
+}
+
+.markdown-bold {
+    -fx-font-weight: bold;
+}
+
+.markdown-strikethrough {
+    -fx-strikethrough: true;
+}
+
+.markdown-normal-flow {
+    -fx-line-spacing: 5;
+}
+
+.markdown-heading .markdown-text {
+    /*-fx-line-spacing: 100;*/
+    -fx-fill: text-secondary;
+}
+
+.markdown-heading-1 {
+    -fx-padding: 14px 0px;
+}
+
+.markdown-heading-2 {
+    -fx-padding: 10px 0px;
+}
+
+.markdown-heading-3 {
+    -fx-padding: 8px 0px;
+}
+
+.markdown-heading-4 {
+    -fx-padding: 6px 0px;
+}
+
+.markdown-heading-5 {
+    -fx-padding: 4px 0px;
+}
+
+.markdown-heading-1 .markdown-text {
+    -fx-font-size: 2em;
+}
+
+.markdown-heading-2 .markdown-text {
+    -fx-font-size: 1.75em;
+}
+
+.markdown-heading-3 .markdown-text {
+    -fx-font-size: 1.5em;
+}
+
+.markdown-heading-4 .markdown-text {
+    -fx-font-size: 1.25em;
+}
+
+.markdown-heading-5 .markdown-text {
+    -fx-font-size: 1em;
+}
+
+.markdown-link {
+    -fx-fill: bg-hover;
+    -fx-cursor: hand;
+}
+
+.markdown-link-hover {
+    -fx-underline: true;
+}
+
+.markdown-paragraph-list {
+    -fx-spacing: 15px;
+}
+
+.markdown-listitem-dot {
+    -fx-text-fill: bg-hover;
+}
+
+.markdown-codeblock-box,
+.markdown-code {
+    -fx-padding: 0px 8px;
+}
+
+.markdown-code {
+    /*-fx-max-width: 300*/
+}
+
+.markdown-code,
+.markdown-codeblock {
+    -fx-wrap-text: true;
+}
+
+.markdown-codeblock-box,
+.markdown-code-background {
+    -fx-padding: 8px;
+    -fx-border-radius: 8px;
+    -fx-border-color: bg-hover;
+    -fx-border-width: 0.5px;
+    -fx-background-radius: 8px;
+    -fx-background-color: bg-hover;
+}
+
+.markdown-code-background {
+    -fx-border-width: 0px;
+}
+
+.markdown-code-anti-padding {
+    /*-fx-padding: -8;*/
+    -fx-border-color: bg-hover;
+    -fx-border-width: 1px;
+}
+
+.markdown-table-table {
+    -fx-vgap: -1px;
+    -fx-hgap: -1px;
+}
+
+.markdown-table-cell {
+    -fx-padding: 8px;
+    -fx-border-color: bg-hover;
+    -fx-border-width: 0px;
+}
+
+.markdown-table-even {
+    -fx-background-color: bg-hover;
+}
+
+.markdown-table-odd {
+    -fx-background-color: bg-hover;
+}
+
+.markdown-table-cell-top {
+    -fx-background-color: bg-hover;
+}
+
+.markdown-table-cell-top .markdown-normal-flow {
+    -fx-alignment: center;
+    -fx-text-alignment: center;
+}
+
+.markdown-hbox1 {
+    -fx-spacing: 0px;
+    -fx-padding: 2px;
+}
+
+/* ---------- BLOCK QUOTE ---------- */
+
+.markdown-normal-block-quote {
+    -fx-background: bg-hover;
+    -fx-background-color: bg-hover;
+    -fx-border-color: bg-hover;
+    -fx-border-width: 0px 0px 0px 3px;
+    -fx-padding: 10px;
+}
+
+.markdown-normal-block-quote .markdown-normal-flow .markdown-text {
+    -fx-fill: bg-hover;
+}
+
+/* ---------- CODE BLOCK ---------- */
+
+.markdown-code-block {
+}
+
+.markdown-code-block .code-text-flow {
+    -fx-padding: 12px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-border-color: bg-hover;
+    -fx-border-width: 0px;
+    -fx-background-color: bg-hover;
+    -fx-line-spacing: 2px;
+    -fx-font-family: "monospace";
+}
+
+.markdown-code-block.scrollable .code-scroll-pane {
+    -fx-padding: 2px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+    -fx-border-color: bg-hover;
+    -fx-border-width: 0px;
+    -fx-background-color: bg-hover;
+}
+
+.markdown-code-block.scrollable .code-scroll-pane .viewport,
+.markdown-code-block.scrollable .code-scroll-pane .corner {
+    -fx-background-color: bg-hover;
+}
+
+.markdown-code-block.scrollable .code-text-flow {
+    -fx-background-color: bg-hover;
+    -fx-border-color: bg-hover;
+    -fx-border-width: 0px;
+    -fx-border-radius: 8px;
+    -fx-background-radius: 8px;
+}
+
+.markdown-code-block .code-copy-button {
+    -fx-padding: 2px 8px;
+    -fx-font-size: 0.85em;
+    -fx-background-radius: 6px;
+    -fx-cursor: hand;
+    -fx-opacity: 0.65;
+}
+
+.markdown-code-block:hover .code-copy-button {
+    -fx-opacity: 1.0;
 }

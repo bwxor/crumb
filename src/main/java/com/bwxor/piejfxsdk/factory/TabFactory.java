@@ -2,6 +2,7 @@ package com.bwxor.piejfxsdk.factory;
 
 import com.bwxor.piejfxsdk.state.ServiceState;
 import com.bwxor.piejfxsdk.state.UIState;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
@@ -15,6 +16,7 @@ import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.scene.text.TextAlignment;
+import one.jpro.platform.mdfx.MarkdownView;
 
 public class TabFactory {
     public static Tab createClaudeAgentTab() {
@@ -115,6 +117,7 @@ public class TabFactory {
         hBox.getChildren().addAll(region, button);
 
         var scrollPane = new ScrollPane();
+        uiState.setMessageHistoryScrollPane(scrollPane);
 
         var messageHistoryVBox = new VBox();
         messageHistoryVBox.setSpacing(5);
@@ -154,7 +157,7 @@ public class TabFactory {
                         uiState.getClaudeAnswerTextVBox().setVisible(true);
                         uiState.getClaudeAnswerTextVBox().setManaged(true);
 
-                        String text = textArea.getText();
+                        String text = textArea.getSelectedText().isEmpty() ? textArea.getText() : textArea.getSelectedText();
                         textArea.setEditable(false);
                         textArea.clear();
 
@@ -177,21 +180,25 @@ public class TabFactory {
         ServiceState serviceState = ServiceState.instance;
         UIState uiState = UIState.instance;
 
-        Task<String> task = new Task<String>() {
+        final MarkdownView markdownView = MessageFactory.createAssistantMessage("");
+        uiState.getMessageHistoryVBox().getChildren().add(markdownView);
+
+        Task<String> task = new Task<>() {
             @Override
             protected String call() {
                 String result[] = new String[1];
 
-                serviceState.getClaudeMessageService().sendSingleMessage(text, t -> {
-                    result[0] = t;
-                });
+                serviceState.getClaudeMessageService().sendSingleMessageStreaming(text, t ->
+                        Platform.runLater(() -> {
+                            markdownView.setMdString(markdownView.getMdString() + t);
+                            uiState.getMessageHistoryScrollPane().setVvalue(1.0);
+                        }));
 
                 return result[0];
             }
         };
 
-        task.setOnSucceeded(event -> {
-            uiState.getMessageHistoryVBox().getChildren().add(MessageFactory.createAssistantMessage(task.getValue()));
+        task.setOnSucceeded(_ -> {
             textArea.setEditable(true);
         });
 
