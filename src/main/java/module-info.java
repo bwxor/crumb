@@ -9,6 +9,7 @@ module com.bwxor.piejfxsdk {
     requires anthropic.java.core;
     requires anthropic.java.client.okhttp;
     requires one.jpro.platform.mdfx;
+    requires com.fasterxml.jackson.annotation;
 
     opens com.bwxor.piejfxsdk to javafx.fxml;
     exports com.bwxor.piejfxsdk;

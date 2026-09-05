@@ -11,6 +11,7 @@ import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.input.KeyCode;
+import javafx.scene.input.KeyEvent;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
 import javafx.scene.layout.Region;
@@ -141,36 +142,35 @@ public class TabFactory {
         var textArea = new TextArea();
         textArea.setPromptText("How can I help you today?");
         textArea.setWrapText(true);
-        textArea.setOnKeyPressed(
-                e -> {
-                    if (e.getCode().equals(KeyCode.ENTER) && !e.isShiftDown()) {
-                        if (serviceState.getClaudeMessageService() == null) {
-                            textArea.clear();
-                            textArea.setEditable(true);
-                            serviceState.getNotificationService().showNotificationOk("Please insert your Claude API Key in the configuration file.");
-                            return;
-                        }
-
-                        // todo check if session active, if not create a new one
-                        uiState.getClaudeAnswerHomeVBox().setVisible(false);
-                        uiState.getClaudeAnswerHomeVBox().setManaged(false);
-                        uiState.getClaudeAnswerTextVBox().setVisible(true);
-                        uiState.getClaudeAnswerTextVBox().setManaged(true);
-
-                        String text = textArea.getSelectedText().isEmpty() ? textArea.getText() : textArea.getSelectedText();
-                        textArea.setEditable(false);
-                        textArea.clear();
-
-                        uiState.getMessageHistoryVBox().getChildren().add(MessageFactory.createUserMessage(text));
-
-                        Thread thread = new Thread(createAssistantTask(textArea, text), "claude-chat-request");
-                        thread.setDaemon(true);
-                        thread.start();
-
-                        e.consume();
-                    }
+        textArea.addEventFilter(KeyEvent.KEY_PRESSED, e -> {
+            if (e.getCode().equals(KeyCode.ENTER) && !e.isShiftDown()) {
+                if (serviceState.getClaudeMessageService() == null) {
+                    textArea.clear();
+                    textArea.setEditable(true);
+                    serviceState.getNotificationService().showNotificationOk("Please insert your Claude API Key in the configuration file.");
+                    return;
                 }
-        );
+
+                // todo check if session active, if not create a new one
+                uiState.getClaudeAnswerHomeVBox().setVisible(false);
+                uiState.getClaudeAnswerHomeVBox().setManaged(false);
+                uiState.getClaudeAnswerTextVBox().setVisible(true);
+                uiState.getClaudeAnswerTextVBox().setManaged(true);
+
+                String text = textArea.getSelectedText().isEmpty() ? textArea.getText() : textArea.getSelectedText();
+                textArea.setEditable(false);
+                textArea.clear();
+
+                uiState.getMessageHistoryVBox().getChildren().add(MessageFactory.createUserMessage(text));
+
+                Thread thread = new Thread(createAssistantTask(textArea, text), "claude-chat-request");
+                thread.setDaemon(true);
+                thread.start();
+
+                e.consume();
+            }
+        });
+
         VBox.setVgrow(textArea, Priority.ALWAYS);
         var vbox = new VBox(textArea);
         return vbox;
@@ -188,7 +188,7 @@ public class TabFactory {
             protected String call() {
                 String result[] = new String[1];
 
-                serviceState.getClaudeMessageService().sendSingleMessageStreaming(text, t ->
+                serviceState.getClaudeMessageService().sendAgentic(text, 10, t ->
                         Platform.runLater(() -> {
                             markdownView.setMdString(markdownView.getMdString() + t);
                             uiState.getMessageHistoryScrollPane().setVvalue(1.0);

@@ -84,10 +84,13 @@ public class CrumbPlugin implements Plugin {
     @Override
     public void onOpenFolder(File file) {
         UIState uiState = UIState.instance;
+        OpenedFolderState openedFolderState = OpenedFolderState.instance;
 
         if (!uiState.getSidebarTabPane().getTabs().contains(uiState.getClaudeAgentTab())) {
             uiState.getSidebarTabPane().getTabs().add(uiState.getClaudeAgentTab());
         }
+
+        openedFolderState.setOpenedFolder(file);
     }
 
     @Override
