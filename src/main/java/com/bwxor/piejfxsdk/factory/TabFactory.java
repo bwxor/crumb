@@ -1,7 +1,10 @@
 package com.bwxor.piejfxsdk.factory;
 
+import com.bwxor.piejfxsdk.dto.Session;
 import com.bwxor.piejfxsdk.state.ServiceState;
+import com.bwxor.piejfxsdk.state.SessionState;
 import com.bwxor.piejfxsdk.state.UIState;
+import com.bwxor.piejfxsdk.type.Role;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.geometry.Insets;
@@ -75,17 +78,17 @@ public class TabFactory {
         label.setTextAlignment(TextAlignment.CENTER);
         label.setMaxWidth(Double.MAX_VALUE);
 
-        var button = new Button("Read Documentation");
-
         ScrollPane sessionScrollPane = new ScrollPane();
+        sessionScrollPane.setFitToWidth(true);
+        sessionScrollPane.setMaxWidth(Double.MAX_VALUE);
         VBox sessionVBox = new VBox();
+        sessionVBox.setSpacing(5);
         uiState.setSessionVBox(sessionVBox);
 
         sessionScrollPane.setContent(sessionVBox);
 
         vBox.getChildren().add(imageView);
         vBox.getChildren().add(label);
-        vBox.getChildren().add(button);
         vBox.getChildren().add(sessionScrollPane);
 
         return vBox;
@@ -94,6 +97,7 @@ public class TabFactory {
     private static VBox createClaudeAnswerTextVBox() {
         UIState uiState = UIState.instance;
         ServiceState serviceState = ServiceState.instance;
+        SessionState sessionState = SessionState.instance;
 
         var vBox = new VBox();
         VBox.setVgrow(vBox, Priority.ALWAYS);
@@ -107,11 +111,15 @@ public class TabFactory {
         var button = new Button("Close");
         button.setOnMouseClicked(
                 e -> {
-                    // todo close / save claude context
                     uiState.getClaudeAnswerTextVBox().setVisible(false);
                     uiState.getClaudeAnswerTextVBox().setManaged(false);
                     uiState.getClaudeAnswerHomeVBox().setVisible(true);
                     uiState.getClaudeAnswerHomeVBox().setManaged(true);
+                    sessionState.setCurrentSessionIndex(-1);
+
+                    if (uiState.getClaudePromptTextArea() != null) {
+                        uiState.getClaudePromptTextArea().setEditable(true);
+                    }
                 }
         );
 
@@ -138,6 +146,7 @@ public class TabFactory {
     private static VBox createClaudeAgentChatPane() {
         UIState uiState = UIState.instance;
         ServiceState serviceState = ServiceState.instance;
+        SessionState sessionState = SessionState.instance;
 
         var textArea = new TextArea();
         textArea.setPromptText("How can I help you today?");
@@ -151,11 +160,24 @@ public class TabFactory {
                     return;
                 }
 
-                // todo check if session active, if not create a new one
-                uiState.getClaudeAnswerHomeVBox().setVisible(false);
-                uiState.getClaudeAnswerHomeVBox().setManaged(false);
-                uiState.getClaudeAnswerTextVBox().setVisible(true);
-                uiState.getClaudeAnswerTextVBox().setManaged(true);
+                // Create new session if no chat has been opened
+                if (sessionState.getCurrentSessionIndex() == -1) {
+                    sessionState.getSessions().add(new Session());
+                    final int currentSessionIndex = sessionState.getSessions().size() - 1;
+                    sessionState.setCurrentSessionIndex(currentSessionIndex);
+                    showSessionHistory();
+
+                    String buttonText = textArea.getText();
+                    var currentSessionButton = new Button(buttonText);
+                    currentSessionButton.setPrefHeight(50);
+                    currentSessionButton.setWrapText(true);
+                    currentSessionButton.setMaxWidth(Double.MAX_VALUE);
+                    currentSessionButton.setOnMouseClicked(_ -> {
+                        sessionState.setCurrentSessionIndex(currentSessionIndex);
+                        showSessionHistory();
+                    });
+                    uiState.getSessionVBox().getChildren().add(currentSessionButton);
+                }
 
                 String text = textArea.getSelectedText().isEmpty() ? textArea.getText() : textArea.getSelectedText();
                 textArea.setEditable(false);
@@ -170,6 +192,7 @@ public class TabFactory {
                 e.consume();
             }
         });
+        uiState.setClaudePromptTextArea(textArea);
 
         VBox.setVgrow(textArea, Priority.ALWAYS);
         var vbox = new VBox(textArea);
@@ -203,6 +226,30 @@ public class TabFactory {
         });
 
         return task;
+    }
+
+    private static void showSessionHistory() {
+        UIState uiState = UIState.instance;
+        SessionState sessionState = SessionState.instance;
+
+        uiState.getMessageHistoryVBox().getChildren().clear();
+
+        var currentSession = sessionState.getSessions().get(sessionState.getCurrentSessionIndex());
+
+        if (currentSession != null && currentSession.getMessages() != null) {
+            for (var message : currentSession.getMessages()) {
+                if (message.role().equals(Role.USER)) {
+                    uiState.getMessageHistoryVBox().getChildren().add(MessageFactory.createUserMessage(message.content()));
+                } else if (message.role().equals(Role.ASSISTANT)) {
+                    uiState.getMessageHistoryVBox().getChildren().add(MessageFactory.createAssistantMessage(message.content()));
+                }
+            }
+        }
+
+        uiState.getClaudeAnswerHomeVBox().setVisible(false);
+        uiState.getClaudeAnswerHomeVBox().setManaged(false);
+        uiState.getClaudeAnswerTextVBox().setVisible(true);
+        uiState.getClaudeAnswerTextVBox().setManaged(true);
     }
 
 }

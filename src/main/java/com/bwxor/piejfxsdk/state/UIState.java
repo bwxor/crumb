@@ -13,6 +13,8 @@ public class UIState {
     private VBox sessionVBox;
     private VBox messageHistoryVBox;
     private ScrollPane messageHistoryScrollPane;
+    private TextArea claudePromptTextArea;
+
     public static final UIState instance = new UIState();
 
     public ListView getStagedListView() {
@@ -85,5 +87,13 @@ public class UIState {
 
     public void setMessageHistoryScrollPane(ScrollPane messageHistoryScrollPane) {
         this.messageHistoryScrollPane = messageHistoryScrollPane;
+    }
+
+    public TextArea getClaudePromptTextArea() {
+        return claudePromptTextArea;
+    }
+
+    public void setClaudePromptTextArea(TextArea claudePromptTextArea) {
+        this.claudePromptTextArea = claudePromptTextArea;
     }
 }

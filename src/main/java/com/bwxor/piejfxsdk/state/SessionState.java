@@ -1,26 +1,31 @@
 package com.bwxor.piejfxsdk.state;
 
-import com.bwxor.piejfxsdk.type.Role;
+import com.bwxor.piejfxsdk.dto.Session;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class SessionState {
-    private static class Conversation {
-        private Role role;
-        private String message;
-    }
-
-    private List<Conversation> conversations;
 
     public static final SessionState instance = new SessionState();
+    private List<Session> sessions = new ArrayList<>();
+    private int currentSessionIndex = -1;
 
     private SessionState() {}
 
-    public List<Conversation> getConversations() {
-        return conversations;
+    public List<Session> getSessions() {
+        return sessions;
     }
 
-    public void setConversations(List<Conversation> conversations) {
-        this.conversations = conversations;
+    public void setSessions(List<Session> sessions) {
+        this.sessions = sessions;
+    }
+
+    public int getCurrentSessionIndex() {
+        return currentSessionIndex;
+    }
+
+    public void setCurrentSessionIndex(int currentSessionIndex) {
+        this.currentSessionIndex = currentSessionIndex;
     }
 }

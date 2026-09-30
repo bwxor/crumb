@@ -10,10 +10,14 @@ import com.anthropic.models.messages.*;
 import com.anthropic.models.messages.MessageCountTokensParams;
 import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
+import com.bwxor.piejfxsdk.dto.Session;
+import com.bwxor.piejfxsdk.state.SessionState;
 import com.bwxor.piejfxsdk.tool.ListWorkspaceFiles;
 import com.bwxor.piejfxsdk.tool.ReadWorkspaceFile;
+import com.bwxor.piejfxsdk.type.Role;
 
 import java.util.function.Consumer;
+import java.util.stream.Collectors;
 
 
 public class ClaudeMessageService {
@@ -86,17 +90,28 @@ public class ClaudeMessageService {
     }
 
     public void sendAgentic(String prompt, int maxIterations, Consumer<String> displayFunction) {
-        var createParamsBuilder = com.anthropic.models.beta.messages.MessageCreateParams.builder()
-                .model(Model.CLAUDE_HAIKU_4_5)
-                .maxTokens(4096)
-                .addTool(ListWorkspaceFiles.class)
-                .addTool(ReadWorkspaceFile.class)
-                .addUserMessage(prompt);
+        SessionState sessionState = SessionState.instance;
 
-        System.out.println(createParamsBuilder.build());
+        Session currentSession = sessionState.getSessions().get(sessionState.getCurrentSessionIndex());
+
+        currentSession.getMessages().add(new com.bwxor.piejfxsdk.dto.Message(prompt, Role.USER));
+        System.out.println("[" + sessionState.getCurrentSessionIndex() + "] User: " + prompt);
+
+        if (currentSession.getConversation() == null) {
+            currentSession.setConversation(com.anthropic.models.beta.messages.MessageCreateParams.builder()
+                    .model(Model.CLAUDE_HAIKU_4_5)
+                    .maxTokens(4096)
+                    .addTool(ListWorkspaceFiles.class)
+                    .addTool(ReadWorkspaceFile.class));
+        }
+
+        currentSession.getConversation().addUserMessage(prompt);
+
+        // todo for debugging - remove later
+        System.out.println(currentSession.getConversation().build());
 
         for (int i = 0; i < maxIterations; i++) {
-            var streamResponse = client.beta().messages().createStreaming(createParamsBuilder.build());
+            var streamResponse = client.beta().messages().createStreaming(currentSession.getConversation().build());
 
             BetaMessageAccumulator messageAccumulator = BetaMessageAccumulator.create();
 
@@ -122,11 +137,6 @@ public class ClaudeMessageService {
                     .flatMap(cb -> cb.toolUse().stream())
                     .toList();
 
-            // if no tool use blocks, show only text and end iteration
-            if (toolUseBlocks.isEmpty()) {
-                return;
-            }
-
             // AI History
             var assistantBlocks = response.content().stream()
                     .map(cb -> {
@@ -150,6 +160,20 @@ public class ClaudeMessageService {
                     })
                     .toList();
 
+            if (!assistantBlocks.isEmpty()) {
+                currentSession.getConversation().addAssistantMessageOfBetaContentBlockParams(assistantBlocks);
+            }
+
+            // if no tool use blocks, show only text and end iteration
+            if (toolUseBlocks.isEmpty()) {
+                var assistantBlocksText = assistantBlocks.stream()
+                        .flatMap(cb -> cb.text().stream())
+                        .map(BetaTextBlockParam::text)
+                        .collect(Collectors.joining()).strip();
+                currentSession.getMessages().add(new com.bwxor.piejfxsdk.dto.Message(assistantBlocksText, Role.ASSISTANT));
+                return;
+            }
+
             // Application history
             var resultBlocks = toolUseBlocks.stream()
                     .map(tub -> BetaContentBlockParam.ofToolResult(
@@ -159,8 +183,7 @@ public class ClaudeMessageService {
                                     .build()))
                     .toList();
 
-            createParamsBuilder
-                    .addAssistantMessageOfBetaContentBlockParams(assistantBlocks)
+            currentSession.getConversation()
                     .addUserMessageOfBetaContentBlockParams(resultBlocks);
         }
 
@@ -171,12 +194,10 @@ public class ClaudeMessageService {
         if ("list_workspace_files".equals(toolUseBlock.name())) {
             var tool = toolUseBlock.input(ListWorkspaceFiles.class);
             return tool != null ? tool.execute() : EMPTY_STRING;
-        }
-        else if ("read_workspace_file".equals(toolUseBlock.name())) {
+        } else if ("read_workspace_file".equals(toolUseBlock.name())) {
             var tool = toolUseBlock.input(ReadWorkspaceFile.class);
             return tool != null ? tool.execute() : EMPTY_STRING;
-        }
-        else {
+        } else {
             throw new IllegalArgumentException("Unknown tool: " + toolUseBlock.name());
         }
     }
