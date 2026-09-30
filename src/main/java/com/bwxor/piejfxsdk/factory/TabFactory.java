@@ -1,6 +1,7 @@
 package com.bwxor.piejfxsdk.factory;
 
 import com.bwxor.piejfxsdk.dto.Session;
+import com.bwxor.piejfxsdk.state.ConfigurationState;
 import com.bwxor.piejfxsdk.state.ServiceState;
 import com.bwxor.piejfxsdk.state.SessionState;
 import com.bwxor.piejfxsdk.state.UIState;
@@ -206,6 +207,7 @@ public class TabFactory {
 
     private static Task createAssistantTask(TextArea textArea, String text) {
         ServiceState serviceState = ServiceState.instance;
+        ConfigurationState configurationState = ConfigurationState.instance;
         UIState uiState = UIState.instance;
 
         final MarkdownView markdownView = MessageFactory.createAssistantMessage("");
@@ -216,7 +218,7 @@ public class TabFactory {
             protected String call() {
                 String result[] = new String[1];
 
-                serviceState.getClaudeMessageService().sendAgentic(text, 10, t ->
+                serviceState.getClaudeMessageService().sendAgentic(text, configurationState.getMaxIterations(), t ->
                         Platform.runLater(() -> {
                             markdownView.setMdString(markdownView.getMdString() + t);
                             uiState.getMessageHistoryScrollPane().setVvalue(1.0);

@@ -12,8 +12,11 @@ import com.anthropic.models.messages.MessageCreateParams;
 import com.anthropic.models.messages.Model;
 import com.bwxor.piejfxsdk.dto.Session;
 import com.bwxor.piejfxsdk.state.SessionState;
+import com.bwxor.piejfxsdk.tool.ExecuteTerminalCommand;
 import com.bwxor.piejfxsdk.tool.ListWorkspaceFiles;
 import com.bwxor.piejfxsdk.tool.ReadWorkspaceFile;
+import com.bwxor.piejfxsdk.tool.WriteWorkspaceFile;
+import com.bwxor.piejfxsdk.type.ClaudeModel;
 import com.bwxor.piejfxsdk.type.Role;
 
 import java.util.function.Consumer;
@@ -27,9 +30,9 @@ public class ClaudeMessageService {
     private AnthropicClient client;
     private Model model;
 
-    public ClaudeMessageService(String apiKey) {
+    public ClaudeMessageService(String apiKey, ClaudeModel claudeModel) {
         this.client = AnthropicOkHttpClient.builder().apiKey(apiKey).build();
-        this.model = Model.CLAUDE_HAIKU_4_5;
+        this.model = claudeModel.getAnthropicModel();
     }
 
     public void sendSingleMessage(String prompt, Consumer<String> displayFunction) {
@@ -99,10 +102,12 @@ public class ClaudeMessageService {
 
         if (currentSession.getConversation() == null) {
             currentSession.setConversation(com.anthropic.models.beta.messages.MessageCreateParams.builder()
-                    .model(Model.CLAUDE_HAIKU_4_5)
+                    .model(this.model)
                     .maxTokens(4096)
                     .addTool(ListWorkspaceFiles.class)
-                    .addTool(ReadWorkspaceFile.class));
+                    .addTool(ReadWorkspaceFile.class)
+                    .addTool(WriteWorkspaceFile.class)
+                    .addTool(ExecuteTerminalCommand.class));
         }
 
         currentSession.getConversation().addUserMessage(prompt);
@@ -111,6 +116,9 @@ public class ClaudeMessageService {
         System.out.println(currentSession.getConversation().build());
 
         for (int i = 0; i < maxIterations; i++) {
+            if (i > 0) {
+                displayFunction.accept(NEWLINE_STRING);
+            }
             var streamResponse = client.beta().messages().createStreaming(currentSession.getConversation().build());
 
             BetaMessageAccumulator messageAccumulator = BetaMessageAccumulator.create();
@@ -196,6 +204,12 @@ public class ClaudeMessageService {
             return tool != null ? tool.execute() : EMPTY_STRING;
         } else if ("read_workspace_file".equals(toolUseBlock.name())) {
             var tool = toolUseBlock.input(ReadWorkspaceFile.class);
+            return tool != null ? tool.execute() : EMPTY_STRING;
+        } else if ("write_workspace_file".equals(toolUseBlock.name())) {
+            var tool = toolUseBlock.input(WriteWorkspaceFile.class);
+            return tool != null ? tool.execute() : EMPTY_STRING;
+        } else if ("execute_terminal_command".equals(toolUseBlock.name())) {
+            var tool = toolUseBlock.input(ExecuteTerminalCommand.class);
             return tool != null ? tool.execute() : EMPTY_STRING;
         } else {
             throw new IllegalArgumentException("Unknown tool: " + toolUseBlock.name());

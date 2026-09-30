@@ -1,6 +1,9 @@
 package com.bwxor.piejfxsdk.service;
 
 import com.bwxor.piejfxsdk.state.ConfigurationState;
+import com.bwxor.piejfxsdk.state.MCPServerState;
+import com.bwxor.piejfxsdk.type.ClaudeModel;
+import org.json.JSONArray;
 import org.json.JSONObject;
 
 import java.io.*;
@@ -22,6 +25,23 @@ public class ConfigurationService {
             JSONObject config = jsonObject.getJSONObject("config");
 
             configurationState.setApiKey(config.getString("apiKey"));
+
+            String modelKey = config.optString("model", null);
+            configurationState.setModel(ClaudeModel.fromConfigKey(modelKey));
+
+            configurationState.setMaxIterations(config.optInt("maxIterations", 50));
+        }
+    }
+
+    public void loadMcpServers() throws IOException {
+        File mcpFile = new File(Paths.get(ConfigurationState.instance.getConfigurationDirectory().toString(), "mcp_servers.json").toUri());
+
+        createMcpFileIfMissing();
+
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(mcpFile))) {
+            String content = bufferedReader.readAllAsString();
+            JSONObject jsonObject = new JSONObject(content);
+            MCPServerState.fromJson(jsonObject);
         }
     }
 
@@ -51,12 +71,35 @@ public class ConfigurationService {
             root.put("config", config);
 
             config.put("apiKey", EMPTY_STRING);
+            config.put("model", ClaudeModel.HAIKU.getConfigKey());
+            config.put("maxIterations", 50);
 
             bufferedWriter.write(root.toString());
             bufferedWriter.flush();
 
         } catch (IOException e) {
             throw new RuntimeException(e);
+        }
+    }
+
+    private void createMcpFileIfMissing() {
+        File mcpFile = new File(Paths.get(ConfigurationState.instance.getConfigurationDirectory().toString(), "mcp_servers.json").toUri());
+
+        if (!mcpFile.exists()) {
+            try {
+                mcpFile.createNewFile();
+
+                JSONObject root = new JSONObject();
+                JSONArray servers = new JSONArray();
+                root.put("mcpServers", servers);
+
+                try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(mcpFile))) {
+                    bufferedWriter.write(root.toString(2));
+                    bufferedWriter.flush();
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
         }
     }
 }

@@ -13,9 +13,14 @@ public class MenuFactory {
         ConfigurationState configurationState = ConfigurationState.instance;
 
         Menu menu = new Menu("Crumb");
+
         MenuItem settingsMenuItem = new MenuItem("Settings");
         settingsMenuItem.setOnAction(_ -> serviceState.getFileService().openFile(Paths.get(configurationState.getConfigurationDirectory().toString(), "config.json").toFile()));
-        menu.getItems().add(settingsMenuItem);
+
+        MenuItem mcpServersMenuItem = new MenuItem("MCP Servers");
+        mcpServersMenuItem.setOnAction(_ -> serviceState.getFileService().openFile(Paths.get(configurationState.getConfigurationDirectory().toString(), "mcp_servers.json").toFile()));
+
+        menu.getItems().addAll(settingsMenuItem, mcpServersMenuItem);
 
         return menu;
     }

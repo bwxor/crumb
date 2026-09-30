@@ -43,12 +43,18 @@ public class CrumbPlugin implements Plugin {
             serviceState.getConfigurationService().loadCredentials();
 
             if (configurationState.getApiKey() != null && !configurationState.getApiKey().trim().isEmpty()) {
-                serviceState.setClaudeMessageService(new ClaudeMessageService(configurationState.getApiKey()));
+                serviceState.setClaudeMessageService(new ClaudeMessageService(configurationState.getApiKey(), configurationState.getModel()));
             } else {
                 serviceState.getNotificationService().showNotificationOk("Please insert your Claude API Key in the configuration file.");
             }
         } catch (IOException e) {
             serviceState.getNotificationService().showNotificationOk("Error loading your Claude Agent configuration.");
+        }
+
+        try {
+            serviceState.getConfigurationService().loadMcpServers();
+        } catch (IOException e) {
+            serviceState.getNotificationService().showNotificationOk("Error loading MCP servers configuration.");
         }
 
         pluginContext.getApplicationWindow().getMenuBar().getMenus().add(MenuFactory.createClaudeAgentMenu());
@@ -69,10 +75,18 @@ public class CrumbPlugin implements Plugin {
                 serviceState.getConfigurationService().loadCredentials();
 
                 if (configurationState.getApiKey() != null && !configurationState.getApiKey().trim().isEmpty()) {
-                    serviceState.setClaudeMessageService(new ClaudeMessageService(configurationState.getApiKey()));
+                    serviceState.setClaudeMessageService(new ClaudeMessageService(configurationState.getApiKey(), configurationState.getModel()));
                 }
             } catch (IOException e) {
                 serviceState.getNotificationService().showNotificationOk("Error loading your Crumb configuration.");
+            }
+        }
+
+        if (file.getPath().equals(Paths.get(configurationState.getConfigurationDirectory().toString(), "mcp_servers.json").toString())) {
+            try {
+                serviceState.getConfigurationService().loadMcpServers();
+            } catch (IOException e) {
+                serviceState.getNotificationService().showNotificationOk("Error loading MCP servers configuration.");
             }
         }
     }
