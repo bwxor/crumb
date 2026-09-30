@@ -104,26 +104,27 @@ public class TabFactory {
         vBox.setPadding(new Insets(3));
         vBox.setSpacing(3);
 
-        var hBox = new HBox();
+        var hBox = new HBox(5);
         var region = new Region(); // for button to float right
         HBox.setHgrow(region, Priority.ALWAYS);
 
-        var button = new Button("Close");
-        button.setOnMouseClicked(
+        var deleteButton = new Button("Delete");
+        deleteButton.setOnMouseClicked(
                 e -> {
-                    uiState.getClaudeAnswerTextVBox().setVisible(false);
-                    uiState.getClaudeAnswerTextVBox().setManaged(false);
-                    uiState.getClaudeAnswerHomeVBox().setVisible(true);
-                    uiState.getClaudeAnswerHomeVBox().setManaged(true);
-                    sessionState.setCurrentSessionIndex(-1);
-
-                    if (uiState.getClaudePromptTextArea() != null) {
-                        uiState.getClaudePromptTextArea().setEditable(true);
-                    }
+                    sessionState.getSessions().remove(sessionState.getCurrentSessionIndex());
+                    uiState.getSessionVBox().getChildren().remove(sessionState.getCurrentSessionIndex());
+                    showAllSessions();
                 }
         );
 
-        hBox.getChildren().addAll(region, button);
+        var closeButton = new Button("Close");
+        closeButton.setOnMouseClicked(
+                e -> {
+                    showAllSessions();
+                }
+        );
+
+        hBox.getChildren().addAll(region, deleteButton, closeButton);
 
         var scrollPane = new ScrollPane();
         uiState.setMessageHistoryScrollPane(scrollPane);
@@ -169,11 +170,15 @@ public class TabFactory {
 
                     String buttonText = textArea.getText();
                     var currentSessionButton = new Button(buttonText);
-                    currentSessionButton.setPrefHeight(50);
+                    currentSessionButton.setMinHeight(30);
+                    currentSessionButton.setMaxHeight(60);
                     currentSessionButton.setWrapText(true);
                     currentSessionButton.setMaxWidth(Double.MAX_VALUE);
                     currentSessionButton.setOnMouseClicked(_ -> {
-                        sessionState.setCurrentSessionIndex(currentSessionIndex);
+                        int currentIndex;
+                        for (currentIndex = 0; uiState.getSessionVBox().getChildren().get(currentIndex) != currentSessionButton && currentIndex < uiState.getSessionVBox().getChildren().size(); currentIndex++);
+
+                        sessionState.setCurrentSessionIndex(currentIndex);
                         showSessionHistory();
                     });
                     uiState.getSessionVBox().getChildren().add(currentSessionButton);
@@ -250,6 +255,21 @@ public class TabFactory {
         uiState.getClaudeAnswerHomeVBox().setManaged(false);
         uiState.getClaudeAnswerTextVBox().setVisible(true);
         uiState.getClaudeAnswerTextVBox().setManaged(true);
+    }
+
+    private static void showAllSessions() {
+        UIState uiState = UIState.instance;
+        SessionState sessionState = SessionState.instance;
+
+        uiState.getClaudeAnswerTextVBox().setVisible(false);
+        uiState.getClaudeAnswerTextVBox().setManaged(false);
+        uiState.getClaudeAnswerHomeVBox().setVisible(true);
+        uiState.getClaudeAnswerHomeVBox().setManaged(true);
+        sessionState.setCurrentSessionIndex(-1);
+
+        if (uiState.getClaudePromptTextArea() != null) {
+            uiState.getClaudePromptTextArea().setEditable(true);
+        }
     }
 
 }
