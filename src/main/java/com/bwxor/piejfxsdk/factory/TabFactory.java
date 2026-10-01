@@ -2,10 +2,7 @@ package com.bwxor.piejfxsdk.factory;
 
 import com.bwxor.piejfxsdk.dto.Session;
 import com.bwxor.piejfxsdk.mapper.MapLargeNumbersToString;
-import com.bwxor.piejfxsdk.state.ConfigurationState;
-import com.bwxor.piejfxsdk.state.ServiceState;
-import com.bwxor.piejfxsdk.state.SessionState;
-import com.bwxor.piejfxsdk.state.UIState;
+import com.bwxor.piejfxsdk.state.*;
 import com.bwxor.piejfxsdk.type.Role;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
@@ -224,6 +221,7 @@ public class TabFactory {
         ServiceState serviceState = ServiceState.instance;
         ConfigurationState configurationState = ConfigurationState.instance;
         UIState uiState = UIState.instance;
+        OpenedFolderState openedFolderState = OpenedFolderState.instance;
 
         final MarkdownView markdownView = MessageFactory.createAssistantMessage("");
         uiState.getMessageHistoryVBox().getChildren().add(markdownView);
@@ -248,6 +246,10 @@ public class TabFactory {
                                     MessageFactory.createToolUseMessage(toolUseDisplayItem.toolName(), toolUseDisplayItem.inputs()));
                             currentMarkdown[0] = null;
                             uiState.getMessageHistoryScrollPane().setVvalue(1.0);
+
+                            if (toolUseDisplayItem.toolName().equals("✎ write_workspace_file") || toolUseDisplayItem.toolName().equals("❯ execute_terminal_command")) {
+                                serviceState.getFileService().openFolder(openedFolderState.getOpenedFolder());
+                            }
                         })),
                         (toggle) -> Platform.runLater(() -> {
                             if (toggle) {
