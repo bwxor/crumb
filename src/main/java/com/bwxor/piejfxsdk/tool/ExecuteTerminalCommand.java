@@ -12,7 +12,7 @@ import java.util.List;
 import java.util.stream.Collectors;
 
 @JsonClassDescription("Executes a terminal command in the currently opened workspace directory and returns its combined stdout and stderr output.")
-public class ExecuteTerminalCommand {
+public class ExecuteTerminalCommand implements BuiltInTool<String>{
     private static final String ERROR_NO_FOLDER = "error: no workspace folder is open";
     private static final String ERROR_EXEC = "error: could not execute command";
 

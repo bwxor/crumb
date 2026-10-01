@@ -5,6 +5,21 @@
     -fx-padding: 6px;
 }
 
+.crumb-tool-use-message {
+    -fx-background-color: accent;
+    -fx-text-fill: text-on-accent;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-padding: 6px;
+}
+
+.crumb-info-message {
+    -fx-background-color: bg-hover;
+    -fx-background-radius: 8px;
+    -fx-border-radius: 8px;
+    -fx-padding: 6px;
+}
+
 .markdown-view {
     -mdfx-font-color: bg-hover;
     -mdfx-link-color: bg-hover;

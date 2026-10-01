@@ -13,7 +13,7 @@ import java.nio.file.Path;
 @JsonClassDescription("Writes (creates or overwrites) a file inside the currently opened workspace folder. "
         + "Use a path relative to the workspace root with forward slashes, e.g. 'src/main/java/App.java'. "
         + "Missing parent folders are created automatically.")
-public class WriteWorkspaceFile {
+public class WriteWorkspaceFile implements BuiltInTool<String> {
     private static final String ERROR_NO_FOLDER = "error: no workspace folder is open";
 
     @JsonPropertyDescription("File path relative to the workspace root, using forward slashes, e.g. 'src/main/java/App.java'")

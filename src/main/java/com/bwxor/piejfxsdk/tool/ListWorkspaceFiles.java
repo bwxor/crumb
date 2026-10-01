@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 @JsonClassDescription("Lists all files from the currently opened directory. Use it when you want to find out the paths of the files to access. Is usually called before the file reading tool.")
-public class ListWorkspaceFiles {
+public class ListWorkspaceFiles implements BuiltInTool<List<String>> {
     @JsonPropertyDescription("Unused placeholder parameter; pass an empty string.")
     public String placeholder = "";
 

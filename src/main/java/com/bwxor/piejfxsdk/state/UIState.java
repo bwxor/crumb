@@ -14,6 +14,8 @@ public class UIState {
     private VBox messageHistoryVBox;
     private ScrollPane messageHistoryScrollPane;
     private TextArea claudePromptTextArea;
+    private ProgressBar tokenProgressBar;
+    private Label tokenUsageLabel;
 
     public static final UIState instance = new UIState();
 
@@ -95,5 +97,21 @@ public class UIState {
 
     public void setClaudePromptTextArea(TextArea claudePromptTextArea) {
         this.claudePromptTextArea = claudePromptTextArea;
+    }
+
+    public ProgressBar getTokenProgressBar() {
+        return tokenProgressBar;
+    }
+
+    public void setTokenProgressBar(ProgressBar tokenProgressBar) {
+        this.tokenProgressBar = tokenProgressBar;
+    }
+
+    public Label getTokenUsageLabel() {
+        return tokenUsageLabel;
+    }
+
+    public void setTokenUsageLabel(Label tokenUsageLabel) {
+        this.tokenUsageLabel = tokenUsageLabel;
     }
 }

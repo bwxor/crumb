@@ -1,6 +1,7 @@
 package com.bwxor.piejfxsdk.factory;
 
 import com.bwxor.piejfxsdk.dto.Session;
+import com.bwxor.piejfxsdk.mapper.MapLargeNumbersToString;
 import com.bwxor.piejfxsdk.state.ConfigurationState;
 import com.bwxor.piejfxsdk.state.ServiceState;
 import com.bwxor.piejfxsdk.state.SessionState;
@@ -115,6 +116,7 @@ public class TabFactory {
                     sessionState.getSessions().remove(sessionState.getCurrentSessionIndex());
                     uiState.getSessionVBox().getChildren().remove(sessionState.getCurrentSessionIndex());
                     showAllSessions();
+                    uiState.getClaudePromptTextArea().setEditable(true);
                 }
         );
 
@@ -126,6 +128,18 @@ public class TabFactory {
         );
 
         hBox.getChildren().addAll(region, deleteButton, closeButton);
+
+        var tokenUsageLabel = new Label("0");
+        uiState.setTokenUsageLabel(tokenUsageLabel);
+        var tokenProgressBar = new ProgressBar();
+        tokenProgressBar.setProgress(0);
+        tokenProgressBar.setMaxWidth(Double.MAX_VALUE);
+        HBox.setHgrow(tokenProgressBar, Priority.ALWAYS);
+        uiState.setTokenProgressBar(tokenProgressBar);
+
+        var tokenUsageHBox = new HBox(8, tokenUsageLabel, tokenProgressBar);
+        tokenUsageHBox.setPadding(new Insets(4, 8, 4, 8));
+        tokenUsageHBox.setAlignment(Pos.CENTER_RIGHT);
 
         var scrollPane = new ScrollPane();
         uiState.setMessageHistoryScrollPane(scrollPane);
@@ -140,7 +154,7 @@ public class TabFactory {
 
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 
-        vBox.getChildren().addAll(hBox, scrollPane);
+        vBox.getChildren().addAll(hBox, tokenUsageHBox, scrollPane);
 
         return vBox;
     }
@@ -177,7 +191,8 @@ public class TabFactory {
                     currentSessionButton.setMaxWidth(Double.MAX_VALUE);
                     currentSessionButton.setOnMouseClicked(_ -> {
                         int currentIndex;
-                        for (currentIndex = 0; uiState.getSessionVBox().getChildren().get(currentIndex) != currentSessionButton && currentIndex < uiState.getSessionVBox().getChildren().size(); currentIndex++);
+                        for (currentIndex = 0; uiState.getSessionVBox().getChildren().get(currentIndex) != currentSessionButton && currentIndex < uiState.getSessionVBox().getChildren().size(); currentIndex++)
+                            ;
 
                         sessionState.setCurrentSessionIndex(currentIndex);
                         showSessionHistory();
@@ -217,20 +232,38 @@ public class TabFactory {
             @Override
             protected String call() {
                 String result[] = new String[1];
+                final MarkdownView[] currentMarkdown = {markdownView};
 
                 serviceState.getClaudeMessageService().sendAgentic(text, configurationState.getMaxIterations(), t ->
-                        Platform.runLater(() -> {
-                            markdownView.setMdString(markdownView.getMdString() + t);
+                                Platform.runLater(() -> {
+                                    if (currentMarkdown[0] == null) {
+                                        currentMarkdown[0] = MessageFactory.createAssistantMessage("");
+                                        uiState.getMessageHistoryVBox().getChildren().add(currentMarkdown[0]);
+                                    }
+                                    currentMarkdown[0].setMdString(currentMarkdown[0].getMdString() + t);
+                                    uiState.getMessageHistoryScrollPane().setVvalue(1.0);
+                                }),
+                        (toolUseDisplayItem -> Platform.runLater(() -> {
+                            uiState.getMessageHistoryVBox().getChildren().add(
+                                    MessageFactory.createToolUseMessage(toolUseDisplayItem.toolName(), toolUseDisplayItem.inputs()));
+                            currentMarkdown[0] = null;
                             uiState.getMessageHistoryScrollPane().setVvalue(1.0);
-                        }));
+                        })),
+                        (toggle) -> Platform.runLater(() -> {
+                            if (toggle) {
+                                uiState.getClaudeAnswerTextVBox().getChildren().add(MessageFactory.createWorkingMessage());
+                            } else {
+                                uiState.getClaudeAnswerTextVBox().getChildren().removeLast();
+                            }
+                        }),
+                        (progress) -> Platform.runLater(() -> uiState.getTokenProgressBar().setProgress(progress)),
+                        (usedTokens) -> Platform.runLater(() -> uiState.getTokenUsageLabel().setText(MapLargeNumbersToString.map(usedTokens))));
 
                 return result[0];
             }
         };
 
-        task.setOnSucceeded(_ -> {
-            textArea.setEditable(true);
-        });
+        task.setOnSucceeded(_ -> textArea.setEditable(true));
 
         return task;
     }

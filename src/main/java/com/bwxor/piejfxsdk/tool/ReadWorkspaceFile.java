@@ -11,7 +11,7 @@ import java.nio.file.Path;
 import java.util.List;
 
 @JsonClassDescription("Reads a file from the currently opened directory. The path of the file can be obtained by using the list_workspace_files tool.")
-public class ReadWorkspaceFile {
+public class ReadWorkspaceFile implements BuiltInTool<String> {
     private static final String EMPTY_STRING = "";
 
     @JsonPropertyDescription("The path of the file")
