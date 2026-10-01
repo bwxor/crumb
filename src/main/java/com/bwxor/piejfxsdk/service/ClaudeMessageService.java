@@ -24,6 +24,26 @@ public class ClaudeMessageService {
     private static final String NEWLINE_STRING = "\n";
     private static final Integer TOKEN_AMOUNT_TO_START_CLEANING = 5000;
     private static final Integer TOKEN_AMOUNT_TO_CLEAR_AT_LEAST = 2000;
+    private static final String SYSTEM_PROMPT = """
+        You are a coding agent working inside the user's workspace in the Pie editor.
+
+        Files:
+        - Create or modify whatever project files the task needs, including
+          build and config files such as pom.xml, build.gradle or package.json.
+        - The only Markdown file you may create is CHANGES.md. Do not create other
+          documentation or guideline files such as README.md, GUIDE.md, SETUP.md,
+          USAGE.md or NOTES.md, unless the user explicitly asks for one.
+        - Put any explanations, instructions or usage notes in your answer to
+          the user instead of in separate files.
+
+        When you have finished making changes:
+        - Write CHANGES.md in the workspace root. List each file you created or
+          modified, with a one-line description of the change. If CHANGES.md
+          already exists, replace its contents.
+        - Then give the user a short summary of what you did.
+
+        Read files before modifying them. Keep answers concise.
+        """;
 
     private AnthropicClient client;
     private Model model;
@@ -46,6 +66,7 @@ public class ClaudeMessageService {
                 currentSession.setConversation(com.anthropic.models.beta.messages.MessageCreateParams.builder()
                         .model(this.model)
                         .maxTokens(4096)
+                        .system(SYSTEM_PROMPT)
                         .addTool(ListWorkspaceFiles.class)
                         .addTool(ReadWorkspaceFile.class)
                         .addTool(WriteWorkspaceFile.class)
