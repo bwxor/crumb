@@ -1,13 +1,11 @@
 package com.bwxor.piejfxsdk.state;
 
-import com.bwxor.piejfxsdk.type.ClaudeModel;
-
 import java.nio.file.Path;
 
 public class ConfigurationState {
     private Path configurationDirectory;
     private String apiKey;
-    private ClaudeModel model = ClaudeModel.HAIKU;
+    private String model = "anthropic/claude-haiku-4.5";
     private int maxIterations = 50;
     public static final ConfigurationState instance = new ConfigurationState();
     private ConfigurationState() {}
@@ -28,11 +26,11 @@ public class ConfigurationState {
         this.apiKey = apiKey;
     }
 
-    public ClaudeModel getModel() {
+    public String getModel() {
         return model;
     }
 
-    public void setModel(ClaudeModel model) {
+    public void setModel(String model) {
         this.model = model;
     }
 

@@ -4,6 +4,7 @@ import com.bwxor.piejfxsdk.factory.MenuFactory;
 import com.bwxor.piejfxsdk.factory.TabFactory;
 import com.bwxor.piejfxsdk.service.ClaudeMessageService;
 import com.bwxor.piejfxsdk.service.ConfigurationService;
+import com.bwxor.piejfxsdk.service.ModelInfoService;
 import com.bwxor.piejfxsdk.service.ResourceService;
 import com.bwxor.piejfxsdk.state.*;
 import com.bwxor.plugin.Plugin;
@@ -29,6 +30,7 @@ public class CrumbPlugin implements Plugin {
         serviceState.setFileService(pluginContext.getServiceContainer().getFileService());
         serviceState.setNotificationService(pluginContext.getServiceContainer().getNotificationService());
         serviceState.setResourceService(new ResourceService());
+        serviceState.setModelInfoService(new ModelInfoService());
 
         stylesheetState.setThemeURL(pluginContext.getStylesheets().getThemeURL());
         stylesheetState.setDefaultStylesheetURL(pluginContext.getStylesheets().getDefaultStylesURL());
@@ -56,6 +58,8 @@ public class CrumbPlugin implements Plugin {
         } catch (IOException e) {
             serviceState.getNotificationService().showNotificationOk("Error loading MCP servers configuration.");
         }
+
+        serviceState.getModelInfoService().load();
 
         pluginContext.getApplicationWindow().getMenuBar().getMenus().add(MenuFactory.createClaudeAgentMenu());
         uiState.setClaudeAgentTab(TabFactory.createClaudeAgentTab());

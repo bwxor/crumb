@@ -2,7 +2,6 @@ package com.bwxor.piejfxsdk.service;
 
 import com.bwxor.piejfxsdk.state.ConfigurationState;
 import com.bwxor.piejfxsdk.state.MCPServerState;
-import com.bwxor.piejfxsdk.type.ClaudeModel;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -27,7 +26,7 @@ public class ConfigurationService {
             configurationState.setApiKey(config.getString("apiKey"));
 
             String modelKey = config.optString("model", null);
-            configurationState.setModel(ClaudeModel.fromConfigKey(modelKey));
+            configurationState.setModel(modelKey);
 
             configurationState.setMaxIterations(config.optInt("maxIterations", 50));
         }
@@ -71,7 +70,7 @@ public class ConfigurationService {
             root.put("config", config);
 
             config.put("apiKey", EMPTY_STRING);
-            config.put("model", ClaudeModel.HAIKU.getConfigKey());
+            config.put("model", "anthropic/claude-haiku-4.5");
             config.put("maxIterations", 50);
 
             bufferedWriter.write(root.toString());

@@ -115,4 +115,52 @@ public class MessageFactory {
 
         return vbox;
     }
+
+    public static VBox createErrorMessage(String message) {
+        UIState uiState = UIState.instance;
+
+        VBox vbox = new VBox();
+        vbox.setPadding(new Insets(2));
+        vbox.getStyleClass().add("crumb-error-message-vbox");
+        vbox.prefWidthProperty().bind(uiState.getMessageHistoryVBox().widthProperty());
+        vbox.setMinWidth(0);
+        vbox.setMaxWidth(Double.MAX_VALUE);
+        vbox.setAlignment(Pos.CENTER_LEFT);
+        vbox.setSpacing(5);
+
+        HBox hbox = new HBox();
+        hbox.setStyle("-fx-background-color: transparent;");
+
+        var titleLabel = new Label();
+        titleLabel.getStyleClass().add("crumb-special-message-label");
+        titleLabel.setText("Error");
+
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        var moreLabel = new Label();
+        moreLabel.setText("More");
+        moreLabel.getStyleClass().add("crumb-special-message-label");
+        moreLabel.setOnMouseClicked(e -> {
+            if (moreLabel.getText().equals("More")) {
+                moreLabel.setText("Less");
+                var inputsLabel = new Label();
+                inputsLabel.setText(message);
+                inputsLabel.setWrapText(true);
+                inputsLabel.getStyleClass().add("crumb-special-message-label");
+                vbox.getChildren().add(inputsLabel);
+            }
+            else if (moreLabel.getText().equals("Less")) {
+                moreLabel.setText("More");
+                vbox.getChildren().removeLast();
+            }
+        });
+        moreLabel.setMinWidth(Region.USE_PREF_SIZE);
+
+        hbox.getChildren().addAll(titleLabel, spacer, moreLabel);
+
+        vbox.getChildren().add(hbox);
+
+        return vbox;
+    }
 }

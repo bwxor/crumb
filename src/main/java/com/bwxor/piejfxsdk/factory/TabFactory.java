@@ -9,6 +9,7 @@ import javafx.concurrent.Task;
 import javafx.geometry.Insets;
 import javafx.geometry.Orientation;
 import javafx.geometry.Pos;
+import javafx.scene.Node;
 import javafx.scene.control.*;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
@@ -232,6 +233,8 @@ public class TabFactory {
                 String result[] = new String[1];
                 final MarkdownView[] currentMarkdown = {markdownView};
 
+                final Node[] workingMessage = {null};
+
                 serviceState.getClaudeMessageService().sendAgentic(text, configurationState.getMaxIterations(), t ->
                                 Platform.runLater(() -> {
                                     if (currentMarkdown[0] == null) {
@@ -246,20 +249,28 @@ public class TabFactory {
                                     MessageFactory.createToolUseMessage(toolUseDisplayItem.toolName(), toolUseDisplayItem.inputs()));
                             currentMarkdown[0] = null;
                             uiState.getMessageHistoryScrollPane().setVvalue(1.0);
-
-                            if (toolUseDisplayItem.toolName().equals("✎ write_workspace_file") || toolUseDisplayItem.toolName().equals("❯ execute_terminal_command")) {
-                                serviceState.getFileService().openFolder(openedFolderState.getOpenedFolder());
-                            }
                         })),
                         (toggle) -> Platform.runLater(() -> {
+                            var children = uiState.getClaudeAnswerTextVBox().getChildren();
                             if (toggle) {
-                                uiState.getClaudeAnswerTextVBox().getChildren().add(MessageFactory.createWorkingMessage());
-                            } else {
-                                uiState.getClaudeAnswerTextVBox().getChildren().removeLast();
+                                if (workingMessage[0] == null) {
+                                    workingMessage[0] = MessageFactory.createWorkingMessage();
+                                    children.add(workingMessage[0]);
+                                }
+                            } else if (workingMessage[0] != null) {
+                                children.remove(workingMessage[0]);
+                                workingMessage[0] = null;
                             }
                         }),
                         (progress) -> Platform.runLater(() -> uiState.getTokenProgressBar().setProgress(progress)),
-                        (usedTokens) -> Platform.runLater(() -> uiState.getTokenUsageLabel().setText(MapLargeNumbersToString.map(usedTokens))));
+                        (usedTokens) -> Platform.runLater(() -> uiState.getTokenUsageLabel().setText(MapLargeNumbersToString.map(usedTokens))),
+                        (errorMessage) -> Platform.runLater(() -> {
+                            uiState.getMessageHistoryVBox().getChildren().add(
+                                    MessageFactory.createErrorMessage(errorMessage));
+                            currentMarkdown[0] = null;
+                            uiState.getMessageHistoryScrollPane().setVvalue(1.0);
+                        }),
+                        () -> Platform.runLater(() -> serviceState.getFileService().openFolder(openedFolderState.getOpenedFolder())));
 
                 return result[0];
             }
