@@ -22,8 +22,8 @@ import java.util.stream.Collectors;
 public class ClaudeMessageService {
     private static final String EMPTY_STRING = "";
     private static final String NEWLINE_STRING = "\n";
-    private static final Integer TOKEN_AMOUNT_TO_START_CLEANING = 10_000;
-    private static final Integer TOKEN_AMOUNT_TO_CLEAR_AT_LEAST = 2000;
+    private static final Integer TOKEN_AMOUNT_TO_START_CLEANING = 100_000;
+    private static final Integer TOKEN_AMOUNT_TO_CLEAR_AT_LEAST = 20_00;
     private static final String SYSTEM_PROMPT = """
             You are a coding agent working inside the user's workspace in the Pie editor.
             
