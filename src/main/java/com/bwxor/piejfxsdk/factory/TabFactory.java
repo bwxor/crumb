@@ -235,7 +235,7 @@ public class TabFactory {
 
                 final Node[] workingMessage = {null};
 
-                serviceState.getClaudeMessageService().sendAgentic(text, configurationState.getMaxIterations(), t ->
+                serviceState.getClaudeMessageService().sendAgentic(text, configurationState.getMaxIterations(), openedFolderState.getOpenedFolder(), t ->
                                 Platform.runLater(() -> {
                                     if (currentMarkdown[0] == null) {
                                         currentMarkdown[0] = MessageFactory.createAssistantMessage("");
@@ -270,7 +270,8 @@ public class TabFactory {
                             currentMarkdown[0] = null;
                             uiState.getMessageHistoryScrollPane().setVvalue(1.0);
                         }),
-                        () -> Platform.runLater(() -> serviceState.getFileService().openFolder(openedFolderState.getOpenedFolder())));
+                        () -> Platform.runLater(() -> serviceState.getFileService().openFolder(openedFolderState.getOpenedFolder()))
+                );
 
                 return result[0];
             }

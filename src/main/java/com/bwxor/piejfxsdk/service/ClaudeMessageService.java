@@ -12,9 +12,12 @@ import com.bwxor.piejfxsdk.state.SessionState;
 import com.bwxor.piejfxsdk.tool.*;
 import com.bwxor.piejfxsdk.type.Role;
 
+import java.io.File;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -24,6 +27,8 @@ public class ClaudeMessageService {
     private static final String NEWLINE_STRING = "\n";
     private static final Integer TOKEN_AMOUNT_TO_START_CLEANING = 100_000;
     private static final Integer TOKEN_AMOUNT_TO_CLEAR_AT_LEAST = 20_00;
+    // REVIEW: how many review -> fix cycles before remaining issues are just shown to the user
+    private static final int MAX_REVIEW_ROUNDS = 2;
     private static final String SYSTEM_PROMPT = """
             You are a coding agent working inside the user's workspace in the Pie editor.
             
@@ -47,6 +52,9 @@ public class ClaudeMessageService {
 
     private AnthropicClient client;
     private String model;
+    // REVIEW
+    private ReviewService reviewService;
+    private boolean reviewEnabled = true;
 
     public ClaudeMessageService(String apiKey, String model) {
         this.client = AnthropicOkHttpClient.builder()
@@ -55,9 +63,16 @@ public class ClaudeMessageService {
                 .putHeader("X-Title", "PieJFX")
                 .build();
         this.model = model;
+        // REVIEW
+        this.reviewService = new ReviewService(client, model);
     }
 
-    public void sendAgentic(String prompt, int maxIterations, Consumer<String> displayFunction, Consumer<ToolUseDisplayItem> toolUseDisplayFunction, Consumer<Boolean> toggleWorkingFunction, Consumer<Double> progressBarFunction, Consumer<Long> usedTokensFunction, Consumer<String> errorFunction, Runnable openFolderRunnable) {
+    // REVIEW: lets the UI expose a "review changes" toggle
+    public void setReviewEnabled(boolean reviewEnabled) {
+        this.reviewEnabled = reviewEnabled;
+    }
+
+    public void sendAgentic(String prompt, int maxIterations, File openedFolder, Consumer<String> displayFunction, Consumer<ToolUseDisplayItem> toolUseDisplayFunction, Consumer<Boolean> toggleWorkingFunction, Consumer<Double> progressBarFunction, Consumer<Long> usedTokensFunction, Consumer<String> errorFunction, Runnable openFolderRunnable) {
         ServiceState serviceState = ServiceState.instance;
 
         boolean isClaude = model.contains("anthropic/");
@@ -103,6 +118,10 @@ public class ClaudeMessageService {
             System.out.println(currentSession.getConversation().build());
 
             toggleWorkingFunction.accept(true);
+
+            // REVIEW: files written in this task, tracked from actual tool calls (not from CHANGES.md)
+            Set<String> changedFiles = new LinkedHashSet<>();
+            int reviewRounds = 0;
 
             for (int i = 0; i < maxIterations; i++) {
                 if (i > 0) {
@@ -192,9 +211,28 @@ public class ClaudeMessageService {
                             .flatMap(cb -> cb.text().stream())
                             .map(BetaTextBlockParam::text)
                             .collect(Collectors.joining()).strip();
+
+                    // REVIEW: before accepting "done", check that the project compiles
+                    if (reviewEnabled && !changedFiles.isEmpty()) {
+                        boolean sentBackForFixes = review(openedFolder, changedFiles, reviewRounds,
+                                currentSession.getConversation(), assistantBlocks.isEmpty(),
+                                displayFunction, toolUseDisplayFunction);
+                        if (sentBackForFixes) {
+                            reviewRounds++;
+                            continue;
+                        }
+                    }
+
                     currentSession.getMessages().add(new com.bwxor.piejfxsdk.dto.Message(assistantBlocksText, Role.ASSISTANT));
                     return;
                 }
+
+                // REVIEW: remember which files the agent wrote
+                toolUseBlocks.stream()
+                        .filter(t -> "write_workspace_file".equals(t.name()))
+                        .map(ClaudeMessageService::writtenPath)
+                        .filter(Objects::nonNull)
+                        .forEach(changedFiles::add);
 
                 // Application history
                 var resultBlocks = toolUseBlocks.stream()
@@ -215,6 +253,75 @@ public class ClaudeMessageService {
             errorFunction.accept(e.getMessage());
         } finally {
             toggleWorkingFunction.accept(false);
+        }
+    }
+
+    /**
+     * REVIEW: runs the compile check. Returns true if compiler errors were sent back to the agent
+     * (the loop should continue), false if the task can finish.
+     */
+    private boolean review(File openedFolder, Set<String> changedFiles, int reviewRounds,
+                           MessageCreateParams.Builder conversation, boolean noAssistantMessage,
+                           Consumer<String> displayFunction, Consumer<ToolUseDisplayItem> toolUseDisplayFunction) {
+        if (openedFolder == null) {
+            displayFunction.accept("Compile check skipped: no folder is open." + NEWLINE_STRING);
+            return false;
+        }
+
+        ReviewService.CompileResult result;
+        try {
+            displayFunction.accept(NEWLINE_STRING + "I will check if the project compiles." + NEWLINE_STRING);
+            result = reviewService.check(openedFolder.toPath(), changedFiles, toolUseDisplayFunction);
+        } catch (Exception e) {
+            // A broken check must never break the task itself.
+            e.printStackTrace();
+            displayFunction.accept("Compile check failed: " + e.getMessage() + NEWLINE_STRING);
+            return false;
+        }
+
+        switch (result.status()) {
+            case SKIPPED -> {
+                displayFunction.accept("Compile check skipped: " + result.output() + NEWLINE_STRING);
+                return false;
+            }
+            case PASSED -> {
+                displayFunction.accept("✓ Review successful. The project compiles." + NEWLINE_STRING);
+                return false;
+            }
+            default -> {
+                // FAILED, handled below
+            }
+        }
+
+        if (reviewRounds < MAX_REVIEW_ROUNDS) {
+            displayFunction.accept("✗ Compilation failed. Sending errors back for fixes ("
+                    + (reviewRounds + 1) + "/" + MAX_REVIEW_ROUNDS + ")." + NEWLINE_STRING);
+            if (noAssistantMessage) {
+                // keep user/assistant turns alternating
+                conversation.addAssistantMessageOfBetaContentBlockParams(List.of(
+                        BetaContentBlockParam.ofText(BetaTextBlockParam.builder().text("Done.").build())));
+            }
+            conversation.addUserMessage("""
+                    `%s` failed. Fix the compilation errors, then update CHANGES.md and give a short summary.
+                    
+                    %s"""
+                    .formatted(result.command(), result.output()));
+            return true;
+        }
+
+        displayFunction.accept("✗ Still does not compile after " + MAX_REVIEW_ROUNDS + " rounds:"
+                + NEWLINE_STRING + result.output() + NEWLINE_STRING);
+        return false;
+    }
+
+    // REVIEW: path the write tool wrote to. Adjust the accessor to match your WriteWorkspaceFile class.
+    private static String writtenPath(BetaToolUseBlock toolUseBlock) {
+        try {
+            Map<?, ?> input = toolUseBlock.input(Map.class);
+            Object path = input != null ? input.get("path") : null;
+            return path != null ? path.toString() : null;
+        } catch (Exception e) {
+            return null;
         }
     }
 
