@@ -1,5 +1,5 @@
 package com.bwxor.piejfxsdk.type;
 
 public enum Role {
-    USER, ASSISTANT;
+    USER, ASSISTANT, SUBAGENT;
 }

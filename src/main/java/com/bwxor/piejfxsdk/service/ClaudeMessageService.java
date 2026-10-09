@@ -5,19 +5,17 @@ import com.anthropic.client.okhttp.AnthropicOkHttpClient;
 import com.anthropic.core.JsonValue;
 import com.anthropic.helpers.BetaMessageAccumulator;
 import com.anthropic.models.beta.messages.*;
+import com.bwxor.piejfxsdk.dto.DelegateTaskReturnItem;
 import com.bwxor.piejfxsdk.dto.Session;
 import com.bwxor.piejfxsdk.dto.ToolUseDisplayItem;
+import com.bwxor.piejfxsdk.state.OpenedFolderState;
 import com.bwxor.piejfxsdk.state.ServiceState;
 import com.bwxor.piejfxsdk.state.SessionState;
 import com.bwxor.piejfxsdk.tool.*;
 import com.bwxor.piejfxsdk.type.Role;
 
 import java.io.File;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
+import java.util.*;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -26,7 +24,7 @@ public class ClaudeMessageService {
     private static final String EMPTY_STRING = "";
     private static final String NEWLINE_STRING = "\n";
     private static final Integer TOKEN_AMOUNT_TO_START_CLEANING = 100_000;
-    private static final Integer TOKEN_AMOUNT_TO_CLEAR_AT_LEAST = 20_00;
+    private static final Integer TOKEN_AMOUNT_TO_CLEAR_AT_LEAST = 20_000;
     // REVIEW: how many review -> fix cycles before remaining issues are just shown to the user
     private static final int MAX_REVIEW_ROUNDS = 2;
     private static final String SYSTEM_PROMPT = """
@@ -67,14 +65,7 @@ public class ClaudeMessageService {
         this.reviewService = new ReviewService(client, model);
     }
 
-    // REVIEW: lets the UI expose a "review changes" toggle
-    public void setReviewEnabled(boolean reviewEnabled) {
-        this.reviewEnabled = reviewEnabled;
-    }
-
-    public void sendAgentic(String prompt, int maxIterations, File openedFolder, Consumer<String> displayFunction, Consumer<ToolUseDisplayItem> toolUseDisplayFunction, Consumer<Boolean> toggleWorkingFunction, Consumer<Double> progressBarFunction, Consumer<Long> usedTokensFunction, Consumer<String> errorFunction, Runnable openFolderRunnable) {
-        ServiceState serviceState = ServiceState.instance;
-
+    public void sendAgentic(String prompt, int maxIterations, Consumer<String> displayFunction, Consumer<ToolUseDisplayItem> toolUseDisplayFunction, Consumer<Boolean> toggleWorkingFunction, Consumer<Double> progressBarFunction, Consumer<Long> usedTokensFunction, Consumer<String> errorFunction, Runnable openFolderRunnable) {
         boolean isClaude = model.contains("anthropic/");
 
         try {
@@ -86,7 +77,7 @@ public class ClaudeMessageService {
             System.out.println("[" + sessionState.getCurrentSessionIndex() + "] User: " + prompt);
 
             if (currentSession.getConversation() == null) {
-                currentSession.setConversation(com.anthropic.models.beta.messages.MessageCreateParams.builder()
+                currentSession.setConversation(MessageCreateParams.builder()
                         .model(this.model)
                         .maxTokens(16000)
                         .system(SYSTEM_PROMPT)
@@ -94,6 +85,7 @@ public class ClaudeMessageService {
                         .addTool(ReadWorkspaceFile.class)
                         .addTool(WriteWorkspaceFile.class)
                         .addTool(ExecuteTerminalCommand.class)
+                        .addTool(DelegateTask.class)
                         .putAdditionalBodyProperty("session_id", JsonValue.from(currentSession.getId())));
 
                 if (isClaude) {
@@ -114,146 +106,169 @@ public class ClaudeMessageService {
 
             currentSession.getConversation().addUserMessage(prompt);
 
-            // todo for debugging - remove later
-            System.out.println(currentSession.getConversation().build());
-
             toggleWorkingFunction.accept(true);
 
-            // REVIEW: files written in this task, tracked from actual tool calls (not from CHANGES.md)
-            Set<String> changedFiles = new LinkedHashSet<>();
-            int reviewRounds = 0;
+            var changedFiles = new HashSet<String>();
+            runLoop(currentSession, isClaude, reviewEnabled, changedFiles, maxIterations, displayFunction, toolUseDisplayFunction, progressBarFunction, usedTokensFunction, openFolderRunnable);
 
-            for (int i = 0; i < maxIterations; i++) {
-                if (i > 0) {
-                    displayFunction.accept(NEWLINE_STRING);
-                }
-                var streamResponse = client.beta().messages().createStreaming(currentSession.getConversation().build());
-
-                BetaMessageAccumulator messageAccumulator = BetaMessageAccumulator.create();
-
-                streamResponse.stream()
-                        .peek(messageAccumulator::accumulate)
-                        .flatMap(event -> event.contentBlockDelta().stream())
-                        .flatMap(deltaEvent -> deltaEvent.delta().text().stream())
-                        .forEach(textDelta -> displayFunction.accept(textDelta.text()));
-
-                displayFunction.accept(NEWLINE_STRING);
-
-                var response = messageAccumulator.message();
-
-                var limit = isClaude ? TOKEN_AMOUNT_TO_START_CLEANING : serviceState.getModelInfoService().getContextLength(model);
-                var usage = response.usage();
-                var usedTokens = usage.inputTokens() + usage.cacheReadInputTokens().orElse(0L) + usage.cacheCreationInputTokens().orElse(0L);
-                double progress = Math.min(1.0, (double) usedTokens / limit);
-                progressBarFunction.accept(progress);
-                usedTokensFunction.accept(usedTokens);
-
-                // ToDo: For debug purposes, until the plugin becomes stable
-                System.out.println("Stop reason: " + response.stopReason());
-                response.content().forEach(cb -> {
-                    if (cb.toolUse().isPresent()) {
-                        System.out.println("Tool use: " + cb.toolUse().get().name() + " input=" + cb.toolUse().get()._input());
-                    }
-                });
-
-                var toolUseBlocks = response.content().stream()
-                        .flatMap(cb -> cb.toolUse().stream())
-                        .toList();
-
-                // AI History
-                var assistantBlocks = response.content().stream()
-                        .map(cb -> {
-                            if (cb.toolUse().isPresent()) {
-                                var tub = cb.toolUse().get();
-                                return BetaContentBlockParam.ofToolUse(
-                                        BetaToolUseBlockParam.builder()
-                                                .name(tub.name())
-                                                .id(tub.id())
-                                                .input(tub._input())
-                                                .build());
-                            } else if (cb.text().isPresent()) {
-                                var textBlock = cb.text().get();
-                                return BetaContentBlockParam.ofText(
-                                        BetaTextBlockParam.builder()
-                                                .text(textBlock.text())
-                                                .build());
-                            } else if (cb.thinking().isPresent()) {
-                                var t = cb.thinking().get();
-                                return BetaContentBlockParam.ofThinking(BetaThinkingBlockParam.builder()
-                                        .thinking(t.thinking()).signature(t.signature()).build());
-                            } else if (cb.redactedThinking().isPresent()) {
-                                return BetaContentBlockParam.ofRedactedThinking(BetaRedactedThinkingBlockParam.builder()
-                                        .data(cb.redactedThinking().get().data()).build());
-                            } else {
-                                return null;
-                            }
-                        })
-                        .filter(Objects::nonNull)
-                        .toList();
-
-                boolean hitMaxTokens = response.stopReason()
-                        .map(r -> r.equals(BetaStopReason.MAX_TOKENS))
-                        .orElse(false);
-
-                if (hitMaxTokens && !toolUseBlocks.isEmpty()) {
-                    // The last tool call is probably truncated - don't execute it
-                    displayFunction.accept("Response was cut off (max tokens). Try asking for smaller files.");
-                    return;
-                }
-
-                if (!assistantBlocks.isEmpty()) {
-                    currentSession.getConversation().addAssistantMessageOfBetaContentBlockParams(assistantBlocks);
-                }
-
-                // if no tool use blocks, show only text and end iteration
-                if (toolUseBlocks.isEmpty()) {
-                    var assistantBlocksText = assistantBlocks.stream()
-                            .flatMap(cb -> cb.text().stream())
-                            .map(BetaTextBlockParam::text)
-                            .collect(Collectors.joining()).strip();
-
-                    // REVIEW: before accepting "done", check that the project compiles
-                    if (reviewEnabled && !changedFiles.isEmpty()) {
-                        boolean sentBackForFixes = review(openedFolder, changedFiles, reviewRounds,
-                                currentSession.getConversation(), assistantBlocks.isEmpty(),
-                                displayFunction, toolUseDisplayFunction);
-                        if (sentBackForFixes) {
-                            reviewRounds++;
-                            continue;
-                        }
-                    }
-
-                    currentSession.getMessages().add(new com.bwxor.piejfxsdk.dto.Message(assistantBlocksText, Role.ASSISTANT));
-                    return;
-                }
-
-                // REVIEW: remember which files the agent wrote
-                toolUseBlocks.stream()
-                        .filter(t -> "write_workspace_file".equals(t.name()))
-                        .map(ClaudeMessageService::writtenPath)
-                        .filter(Objects::nonNull)
-                        .forEach(changedFiles::add);
-
-                // Application history
-                var resultBlocks = toolUseBlocks.stream()
-                        .map(tub -> BetaContentBlockParam.ofToolResult(
-                                BetaToolResultBlockParam.builder()
-                                        .toolUseId(tub.id())
-                                        .contentAsJson(callTool(tub, toolUseDisplayFunction, openFolderRunnable))
-                                        .build()))
-                        .toList();
-
-                currentSession.getConversation()
-                        .addUserMessageOfBetaContentBlockParams(resultBlocks);
-            }
-
-            displayFunction.accept("Hit max iterations without completing.");
         } catch (Exception e) {
             e.printStackTrace();
             errorFunction.accept(e.getMessage());
         } finally {
             toggleWorkingFunction.accept(false);
         }
+    }
+
+    public void runLoop(Session currentSession, boolean isClaude, boolean reviewEnabled, Set<String> changedFiles, int maxIterations, Consumer<String> displayFunction, Consumer<ToolUseDisplayItem> toolUseDisplayFunction, Consumer<Double> progressBarFunction, Consumer<Long> usedTokensFunction, Runnable openFolderRunnable) {
+        ServiceState serviceState = ServiceState.instance;
+        OpenedFolderState openedFolderState = OpenedFolderState.instance;
+
+        File openedFolder = openedFolderState.getOpenedFolder();
+
+        // REVIEW: files written in this task, tracked from actual tool calls (not from CHANGES.md)
+        int reviewRounds = 0;
+
+        for (int i = 0; i < maxIterations; i++) {
+            if (i > 0) {
+                displayFunction.accept(NEWLINE_STRING);
+            }
+
+            BetaMessageAccumulator messageAccumulator = BetaMessageAccumulator.create();
+            BetaStopReason[] stopReason = {null};
+            Exception[] accumulateError = {null};
+
+            try (var streamResponse = client.beta().messages()
+                    .createStreaming(currentSession.getConversation().build())) {
+                streamResponse.stream()
+                        .peek(event -> {
+                            event.messageDelta().ifPresent(d -> stopReason[0] = d.delta().stopReason().orElse(null));
+                            if (accumulateError[0] == null) {
+                                try {
+                                    messageAccumulator.accumulate(event);
+                                } catch (Exception ex) {
+                                    accumulateError[0] = ex;
+                                }
+                            }
+                        })
+                        .flatMap(event -> event.contentBlockDelta().stream())
+                        .flatMap(deltaEvent -> deltaEvent.delta().text().stream())
+                        .forEach(textDelta -> displayFunction.accept(textDelta.text()));
+            }
+
+            if (accumulateError[0] != null) {
+                System.out.println("Tool JSON broken. stop_reason=" + stopReason[0]);
+                // recover as in the previous snippet: placeholder assistant msg + "retry smaller" user msg, continue
+            }
+
+            displayFunction.accept(NEWLINE_STRING);
+
+            var response = messageAccumulator.message();
+
+            var limit = isClaude ? TOKEN_AMOUNT_TO_START_CLEANING : serviceState.getModelInfoService().getContextLength(model);
+            var usage = response.usage();
+            var usedTokens = usage.inputTokens() + usage.cacheReadInputTokens().orElse(0L) + usage.cacheCreationInputTokens().orElse(0L);
+            double progress = Math.min(1.0, (double) usedTokens / limit);
+            progressBarFunction.accept(progress);
+            usedTokensFunction.accept(usedTokens);
+
+            response.content().forEach(cb -> {
+                if (cb.toolUse().isPresent()) {
+                    System.out.println("Tool use: " + cb.toolUse().get().name() + " input=" + cb.toolUse().get()._input());
+                }
+            });
+
+            var toolUseBlocks = response.content().stream()
+                    .flatMap(cb -> cb.toolUse().stream())
+                    .toList();
+
+            // AI History
+            var assistantBlocks = response.content().stream()
+                    .map(cb -> {
+                        if (cb.toolUse().isPresent()) {
+                            var tub = cb.toolUse().get();
+                            return BetaContentBlockParam.ofToolUse(
+                                    BetaToolUseBlockParam.builder()
+                                            .name(tub.name())
+                                            .id(tub.id())
+                                            .input(tub._input())
+                                            .build());
+                        } else if (cb.text().isPresent()) {
+                            var textBlock = cb.text().get();
+                            return BetaContentBlockParam.ofText(
+                                    BetaTextBlockParam.builder()
+                                            .text(textBlock.text())
+                                            .build());
+                        } else if (cb.thinking().isPresent()) {
+                            var t = cb.thinking().get();
+                            return BetaContentBlockParam.ofThinking(BetaThinkingBlockParam.builder()
+                                    .thinking(t.thinking()).signature(t.signature()).build());
+                        } else if (cb.redactedThinking().isPresent()) {
+                            return BetaContentBlockParam.ofRedactedThinking(BetaRedactedThinkingBlockParam.builder()
+                                    .data(cb.redactedThinking().get().data()).build());
+                        } else {
+                            return null;
+                        }
+                    })
+                    .filter(Objects::nonNull)
+                    .toList();
+
+            boolean hitMaxTokens = response.stopReason()
+                    .map(r -> r.equals(BetaStopReason.MAX_TOKENS))
+                    .orElse(false);
+
+            if (hitMaxTokens && !toolUseBlocks.isEmpty()) {
+                // The last tool call is probably truncated - don't execute it
+                displayFunction.accept("Response was cut off (max tokens). Try asking for smaller files.");
+                return;
+            }
+
+            if (!assistantBlocks.isEmpty()) {
+                currentSession.getConversation().addAssistantMessageOfBetaContentBlockParams(assistantBlocks);
+            }
+
+            // if no tool use blocks, show only text and end iteration
+            if (toolUseBlocks.isEmpty()) {
+                var assistantBlocksText = assistantBlocks.stream()
+                        .flatMap(cb -> cb.text().stream())
+                        .map(BetaTextBlockParam::text)
+                        .collect(Collectors.joining()).strip();
+
+                // REVIEW: before accepting "done", check that the project compiles
+                if (reviewEnabled && !changedFiles.isEmpty()) {
+                    boolean sentBackForFixes = review(openedFolder, changedFiles, reviewRounds,
+                            currentSession.getConversation(), assistantBlocks.isEmpty(),
+                            displayFunction, toolUseDisplayFunction);
+                    if (sentBackForFixes) {
+                        reviewRounds++;
+                        continue;
+                    }
+                }
+
+                currentSession.getMessages().add(new com.bwxor.piejfxsdk.dto.Message(assistantBlocksText, Role.ASSISTANT));
+                return;
+            }
+
+            // REVIEW: remember which files the agent wrote
+            toolUseBlocks.stream()
+                    .filter(t -> "write_workspace_file".equals(t.name()))
+                    .map(ClaudeMessageService::writtenPath)
+                    .filter(Objects::nonNull)
+                    .forEach(changedFiles::add);
+
+            // Application history
+            var resultBlocks = toolUseBlocks.stream()
+                    .map(tub -> BetaContentBlockParam.ofToolResult(
+                            BetaToolResultBlockParam.builder()
+                                    .toolUseId(tub.id())
+                                    .contentAsJson(callTool(tub, changedFiles, toolUseDisplayFunction, openFolderRunnable))
+                                    .build()))
+                    .toList();
+
+            currentSession.getConversation()
+                    .addUserMessageOfBetaContentBlockParams(resultBlocks);
+        }
+
+        displayFunction.accept("Hit max iterations without completing.");
     }
 
     /**
@@ -325,34 +340,43 @@ public class ClaudeMessageService {
         }
     }
 
-    private static Object callTool(BetaToolUseBlock toolUseBlock, Consumer<ToolUseDisplayItem> toolUseDisplayFunction, Runnable openFolderRunnable) {
+    private static Object callTool(BetaToolUseBlock toolUseBlock, Set<String> changedFiles, Consumer<ToolUseDisplayItem> toolUseDisplayFunction, Runnable openFolderRunnable) {
         Class<? extends BuiltInTool<?>> clazz;
 
-        Character displayChar;
+        String displaySymbol;
 
         if ("list_workspace_files".equals(toolUseBlock.name())) {
             clazz = ListWorkspaceFiles.class;
-            displayChar = '☰';
+            displaySymbol = "\uD83D\uDCC2";
         } else if ("read_workspace_file".equals(toolUseBlock.name())) {
             clazz = ReadWorkspaceFile.class;
-            displayChar = '⎘';
+            displaySymbol = "\uD83D\uDCC4";
         } else if ("write_workspace_file".equals(toolUseBlock.name())) {
             clazz = WriteWorkspaceFile.class;
-            displayChar = '✎';
+            displaySymbol = "✏\uFE0F";
         } else if ("execute_terminal_command".equals(toolUseBlock.name())) {
             clazz = ExecuteTerminalCommand.class;
-            displayChar = '❯';
+            displaySymbol = "\uD83D\uDCBB";
+        } else if ("delegate_task".equals(toolUseBlock.name())) {
+            clazz = DelegateTask.class;
+            displaySymbol = "\uD83E\uDD16";
         } else {
             throw new IllegalArgumentException("Unknown tool: " + toolUseBlock.name());
         }
 
         var tool = toolUseBlock.input(clazz);
-        toolUseDisplayFunction.accept(new ToolUseDisplayItem(displayChar + " " + toolUseBlock.name(), toolUseBlock._input().toString()));
+        toolUseDisplayFunction.accept(new ToolUseDisplayItem(displaySymbol + " " + toolUseBlock.name(), toolUseBlock._input().toString()));
         var result = tool != null ? tool.execute() : EMPTY_STRING;
 
         if ("write_workspace_file".equals(toolUseBlock.name()) || "execute_terminal_command".equals(toolUseBlock.name())) {
             openFolderRunnable.run();
         }
+
+        if ("delegate_task".equals(toolUseBlock.name()) && (result instanceof DelegateTaskReturnItem returnItem)) {
+            changedFiles.addAll(returnItem.changedItems());
+            return returnItem.content();
+        }
+
         return result;
     }
 }

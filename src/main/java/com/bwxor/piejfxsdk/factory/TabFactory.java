@@ -235,7 +235,7 @@ public class TabFactory {
 
                 final Node[] workingMessage = {null};
 
-                serviceState.getClaudeMessageService().sendAgentic(text, configurationState.getMaxIterations(), openedFolderState.getOpenedFolder(), t ->
+                serviceState.getClaudeMessageService().sendAgentic(text, configurationState.getMaxIterations(), t ->
                                 Platform.runLater(() -> {
                                     if (currentMarkdown[0] == null) {
                                         currentMarkdown[0] = MessageFactory.createAssistantMessage("");
