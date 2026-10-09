@@ -8,14 +8,20 @@ import com.anthropic.models.beta.messages.*;
 import com.bwxor.piejfxsdk.dto.DelegateTaskReturnItem;
 import com.bwxor.piejfxsdk.dto.Session;
 import com.bwxor.piejfxsdk.dto.ToolUseDisplayItem;
+import com.bwxor.piejfxsdk.factory.MessageFactory;
 import com.bwxor.piejfxsdk.state.OpenedFolderState;
 import com.bwxor.piejfxsdk.state.ServiceState;
 import com.bwxor.piejfxsdk.state.SessionState;
+import com.bwxor.piejfxsdk.state.UIState;
 import com.bwxor.piejfxsdk.tool.*;
 import com.bwxor.piejfxsdk.type.Role;
+import javafx.application.Platform;
+import javafx.scene.control.Alert;
+import javafx.scene.control.ButtonType;
 
 import java.io.File;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Consumer;
 import java.util.stream.Collectors;
 
@@ -364,6 +370,13 @@ public class ClaudeMessageService {
             throw new IllegalArgumentException("Unknown tool: " + toolUseBlock.name());
         }
 
+        boolean needsApproval = "write_workspace_file".equals(toolUseBlock.name())
+                || "execute_terminal_command".equals(toolUseBlock.name());
+
+        if (needsApproval && !askApproval(displaySymbol + " " + toolUseBlock.name(), toolUseBlock._input().toString())) {
+            return "The user denied this action. Do not retry it; continue without it or ask the user how to proceed.";
+        }
+
         var tool = toolUseBlock.input(clazz);
         toolUseDisplayFunction.accept(new ToolUseDisplayItem(displaySymbol + " " + toolUseBlock.name(), toolUseBlock._input().toString()));
         var result = tool != null ? tool.execute() : EMPTY_STRING;
@@ -378,5 +391,15 @@ public class ClaudeMessageService {
         }
 
         return result;
+    }
+
+    private static boolean askApproval(String title, String details) {
+        UIState uiState = UIState.instance;
+
+        var answer = new CompletableFuture<Boolean>();
+        Platform.runLater(
+                () -> uiState.getMessageHistoryVBox().getChildren()
+                .add(MessageFactory.createApprovalMessage(title, details, answer, () -> uiState.getMessageHistoryVBox().getChildren().removeLast())));
+        return answer.join();
     }
 }

@@ -7,6 +7,7 @@ import javafx.animation.KeyFrame;
 import javafx.animation.Timeline;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.Priority;
@@ -14,6 +15,8 @@ import javafx.scene.layout.Region;
 import javafx.scene.layout.VBox;
 import javafx.util.Duration;
 import one.jpro.platform.mdfx.MarkdownView;
+
+import java.util.concurrent.CompletableFuture;
 
 public class MessageFactory {
     public static Label createUserMessage(String message) {
@@ -37,6 +40,66 @@ public class MessageFactory {
     public static MarkdownView createAssistantMessage(String message) {
         var markdown = new StyledMarkdownView(message);
         return markdown;
+    }
+
+    public static VBox createApprovalMessage(String title, String inputs, CompletableFuture<Boolean> answer, Runnable removeMessageRunnable) {
+        UIState uiState = UIState.instance;
+
+        var titleLabel = new Label(title);
+        titleLabel.setStyle("-fx-font-weight: bold;");
+        titleLabel.setWrapText(true);
+        titleLabel.setMinWidth(0);
+        titleLabel.setMaxWidth(Double.MAX_VALUE);
+        titleLabel.setAlignment(Pos.CENTER_LEFT);
+
+        var moreLabel = new Label("More");
+        moreLabel.setMinWidth(Region.USE_PREF_SIZE); // never squeezed by a long title
+
+        var header = new HBox(6, titleLabel, moreLabel);
+        header.setAlignment(Pos.CENTER_LEFT);
+        HBox.setHgrow(titleLabel, Priority.ALWAYS); // title takes the space, pushes "More" right
+
+        var detailsLabel = new Label(inputs);
+        detailsLabel.setStyle("-fx-font-family: monospace;");
+        detailsLabel.setWrapText(true);
+        detailsLabel.setMinWidth(0);
+        detailsLabel.setMaxWidth(Double.MAX_VALUE);
+        detailsLabel.setAlignment(Pos.TOP_LEFT);
+        detailsLabel.setVisible(false);
+        detailsLabel.setManaged(false);
+
+        moreLabel.setOnMouseClicked(e -> {
+            boolean show = !detailsLabel.isVisible();
+            detailsLabel.setVisible(show);
+            detailsLabel.setManaged(show);
+            moreLabel.setText(show ? "Less" : "More");
+        });
+
+        var allowButton = new Button("Allow");
+        var denyButton = new Button("Deny");
+        allowButton.setDefaultButton(true);
+
+        var buttons = new HBox(6, allowButton, denyButton);
+        buttons.setAlignment(Pos.CENTER_LEFT);
+
+        var box = new VBox(4, header, detailsLabel, buttons);
+        box.setPadding(new Insets(2));
+        box.setMinWidth(0);
+        box.setMaxWidth(Double.MAX_VALUE);
+        box.prefWidthProperty().bind(uiState.getMessageHistoryVBox().widthProperty());
+
+        allowButton.setOnAction(_ -> {
+            buttons.setDisable(true);
+            answer.complete(true);
+            removeMessageRunnable.run();
+        });
+        denyButton.setOnAction(_ -> {
+            buttons.setDisable(true);
+            answer.complete(false);
+            removeMessageRunnable.run();
+        });
+
+        return box;
     }
 
     public static Label createWorkingMessage() {
