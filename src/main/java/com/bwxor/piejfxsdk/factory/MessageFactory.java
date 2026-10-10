@@ -47,17 +47,16 @@ public class MessageFactory {
 
         var titleLabel = new Label(title);
         titleLabel.setStyle("-fx-font-weight: bold;");
-        titleLabel.setWrapText(true);
-        titleLabel.setMinWidth(0);
-        titleLabel.setMaxWidth(Double.MAX_VALUE);
-        titleLabel.setAlignment(Pos.CENTER_LEFT);
 
         var moreLabel = new Label("More");
-        moreLabel.setMinWidth(Region.USE_PREF_SIZE); // never squeezed by a long title
+        moreLabel.setMinWidth(Region.USE_PREF_SIZE);
 
-        var header = new HBox(6, titleLabel, moreLabel);
+        Region spacer = new Region();
+        HBox.setHgrow(spacer, Priority.ALWAYS);
+
+        var header = new HBox(6, titleLabel, spacer, moreLabel);
         header.setAlignment(Pos.CENTER_LEFT);
-        HBox.setHgrow(titleLabel, Priority.ALWAYS); // title takes the space, pushes "More" right
+        HBox.setHgrow(titleLabel, Priority.ALWAYS);
 
         var detailsLabel = new Label(inputs);
         detailsLabel.setStyle("-fx-font-family: monospace;");
@@ -87,6 +86,8 @@ public class MessageFactory {
         box.setMinWidth(0);
         box.setMaxWidth(Double.MAX_VALUE);
         box.prefWidthProperty().bind(uiState.getMessageHistoryVBox().widthProperty());
+        box.setAlignment(Pos.CENTER_LEFT);
+        box.setSpacing(5);
 
         allowButton.setOnAction(_ -> {
             buttons.setDisable(true);
@@ -163,6 +164,7 @@ public class MessageFactory {
                 inputsLabel.setText(inputs);
                 inputsLabel.setWrapText(true);
                 inputsLabel.getStyleClass().add("crumb-tool-use-message-label");
+                inputsLabel.setStyle("-fx-font-family: monospace;");
                 vbox.getChildren().add(inputsLabel);
             }
             else if (moreLabel.getText().equals("Less")) {
