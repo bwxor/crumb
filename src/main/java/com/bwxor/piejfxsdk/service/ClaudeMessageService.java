@@ -359,7 +359,7 @@ public class ClaudeMessageService {
             displaySymbol = "\uD83D\uDCC4";
         } else if ("write_workspace_file".equals(toolUseBlock.name())) {
             clazz = WriteWorkspaceFile.class;
-            displaySymbol = "✏\uFE0F";
+            displaySymbol = "✏";
         } else if ("execute_terminal_command".equals(toolUseBlock.name())) {
             clazz = ExecuteTerminalCommand.class;
             displaySymbol = "\uD83D\uDCBB";

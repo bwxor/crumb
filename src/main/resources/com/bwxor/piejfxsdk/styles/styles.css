@@ -12,6 +12,10 @@
     -fx-padding: 6px;
 }
 
+.crumb-tool-use-message-label {
+    -fx-text-fill: text-on-accent;
+}
+
 .crumb-error-message-vbox {
     -fx-background-color: error;
     -fx-background-radius: 8px;
