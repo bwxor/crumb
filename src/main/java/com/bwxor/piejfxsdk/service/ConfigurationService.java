@@ -2,11 +2,16 @@ package com.bwxor.piejfxsdk.service;
 
 import com.bwxor.piejfxsdk.state.ConfigurationState;
 import com.bwxor.piejfxsdk.state.MCPServerState;
+import com.bwxor.piejfxsdk.state.PermissionState;
+import com.bwxor.piejfxsdk.type.Permission;
 import org.json.JSONArray;
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.*;
 import java.nio.file.Paths;
+import java.util.LinkedHashMap;
+import java.util.Map;
 
 public class ConfigurationService {
     private static final String EMPTY_STRING = "";
@@ -41,6 +46,30 @@ public class ConfigurationService {
             String content = bufferedReader.readAllAsString();
             JSONObject jsonObject = new JSONObject(content);
             MCPServerState.fromJson(jsonObject);
+        }
+    }
+
+    /**
+     * Loads permissions.json (creating it with defaults if missing). Tools missing from the file keep their
+     * default permission; unrecognised values are treated as "prompt".
+     */
+    public void loadPermissions() throws IOException {
+        File permissionsFile = new File(Paths.get(ConfigurationState.instance.getConfigurationDirectory().toString(), "permissions.json").toUri());
+
+        createPermissionsFileIfMissing(permissionsFile);
+
+        try (BufferedReader bufferedReader = new BufferedReader(new FileReader(permissionsFile))) {
+            JSONObject root = new JSONObject(bufferedReader.readAllAsString());
+            JSONObject entries = root.getJSONObject("permissions");
+
+            Map<String, Permission> loaded = new LinkedHashMap<>(PermissionState.DEFAULTS);
+            for (String toolName : entries.keySet()) {
+                loaded.put(toolName, Permission.fromString(entries.optString(toolName, null)));
+            }
+            PermissionState.instance.setPermissions(loaded);
+        } catch (JSONException e) {
+            // Keep the previous permissions in place and let the caller notify the user.
+            throw new IOException("Invalid permissions.json: " + e.getMessage(), e);
         }
     }
 
@@ -99,6 +128,31 @@ public class ConfigurationService {
             } catch (IOException e) {
                 throw new RuntimeException(e);
             }
+        }
+    }
+
+    private void createPermissionsFileIfMissing(File permissionsFile) throws IOException {
+        if (permissionsFile.exists()) {
+            return;
+        }
+
+        File dir = permissionsFile.getParentFile();
+        if (dir != null && !dir.exists()) {
+            dir.mkdirs();
+        }
+
+        // Written by hand so the tools keep a stable, readable order (JSONObject does not guarantee one).
+        StringBuilder json = new StringBuilder("{\n  \"permissions\": {\n");
+        var iterator = PermissionState.DEFAULTS.entrySet().iterator();
+        while (iterator.hasNext()) {
+            var entry = iterator.next();
+            json.append("    \"").append(entry.getKey()).append("\": \"").append(entry.getValue().toJsonValue()).append("\"").append(iterator.hasNext() ? "," : "").append("\n");
+        }
+        json.append("  }\n}\n");
+
+        try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(permissionsFile))) {
+            bufferedWriter.write(json.toString());
+            bufferedWriter.flush();
         }
     }
 }

@@ -59,6 +59,13 @@ public class CrumbPlugin implements Plugin {
             serviceState.getNotificationService().showNotificationOk("Error loading MCP servers configuration.");
         }
 
+        try {
+            serviceState.getConfigurationService().loadPermissions();
+        } catch (IOException e) {
+            System.out.println("couldn't load permissions file");
+            serviceState.getNotificationService().showNotificationOk("Error loading permissions configuration: " + e.getMessage());
+        }
+
         serviceState.getModelInfoService().load();
 
         pluginContext.getApplicationWindow().getMenuBar().getMenus().add(MenuFactory.createClaudeAgentMenu());
@@ -91,6 +98,14 @@ public class CrumbPlugin implements Plugin {
                 serviceState.getConfigurationService().loadMcpServers();
             } catch (IOException e) {
                 serviceState.getNotificationService().showNotificationOk("Error loading MCP servers configuration.");
+            }
+        }
+
+        if (file.getPath().equals(Paths.get(configurationState.getConfigurationDirectory().toString(), "permissions.json").toString())) {
+            try {
+                serviceState.getConfigurationService().loadPermissions();
+            } catch (IOException e) {
+                serviceState.getNotificationService().showNotificationOk("Error loading permissions configuration: " + e.getMessage());
             }
         }
     }

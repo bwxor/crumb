@@ -20,7 +20,10 @@ public class MenuFactory {
         MenuItem mcpServersMenuItem = new MenuItem("MCP Servers");
         mcpServersMenuItem.setOnAction(_ -> serviceState.getFileService().openFile(Paths.get(configurationState.getConfigurationDirectory().toString(), "mcp_servers.json").toFile()));
 
-        menu.getItems().addAll(settingsMenuItem, mcpServersMenuItem);
+        MenuItem permissionsMenuItem = new MenuItem("Permissions");
+        permissionsMenuItem.setOnAction(_ -> serviceState.getFileService().openFile(Paths.get(configurationState.getConfigurationDirectory().toString(), "permissions.json").toFile()));
+
+        menu.getItems().addAll(settingsMenuItem, mcpServersMenuItem, permissionsMenuItem);
 
         return menu;
     }

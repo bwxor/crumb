@@ -10,10 +10,12 @@ import com.bwxor.piejfxsdk.dto.Session;
 import com.bwxor.piejfxsdk.dto.ToolUseDisplayItem;
 import com.bwxor.piejfxsdk.factory.MessageFactory;
 import com.bwxor.piejfxsdk.state.OpenedFolderState;
+import com.bwxor.piejfxsdk.state.PermissionState;
 import com.bwxor.piejfxsdk.state.ServiceState;
 import com.bwxor.piejfxsdk.state.SessionState;
 import com.bwxor.piejfxsdk.state.UIState;
 import com.bwxor.piejfxsdk.tool.*;
+import com.bwxor.piejfxsdk.type.Permission;
 import com.bwxor.piejfxsdk.type.Role;
 import javafx.application.Platform;
 import javafx.scene.control.Alert;
@@ -370,10 +372,14 @@ public class ClaudeMessageService {
             throw new IllegalArgumentException("Unknown tool: " + toolUseBlock.name());
         }
 
-        boolean needsApproval = "write_workspace_file".equals(toolUseBlock.name())
-                || "execute_terminal_command".equals(toolUseBlock.name());
+        // permissions.json decides: allow runs the tool, deny refuses it, prompt asks the user first.
+        Permission permission = PermissionState.instance.getPermission(toolUseBlock.name());
 
-        if (needsApproval && !askApproval(displaySymbol + " " + toolUseBlock.name(), toolUseBlock._input().toString())) {
+        if (permission == Permission.DENY) {
+            return "The tool " + toolUseBlock.name() + " is denied by the user's permission settings. Do not retry it; continue without it or ask the user how to proceed.";
+        }
+
+        if (permission == Permission.PROMPT && !askApproval(displaySymbol + " " + toolUseBlock.name(), toolUseBlock._input().toString())) {
             return "The user denied this action. Do not retry it; continue without it or ask the user how to proceed.";
         }
 
