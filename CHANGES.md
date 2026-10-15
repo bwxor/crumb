@@ -1,3 +1,3 @@
 # Changes
 
-- `src/main/java/com/bwxor/piejfxsdk/tool/ReadWorkspaceFile.java`: Fixed the tool returning an empty string for every read. Relative paths from `list_workspace_files` are now resolved against the opened folder before the containment check, and the same resolved path is read. Failures (no path, no open folder, path outside the folder, I/O error) now return a descriptive `Error: ...` message instead of `""`. Removed the unused `EMPTY_STRING` constant and `List` import.
+- `src/main/java/com/bwxor/piejfxsdk/factory/TabFactory.java`: the Crumb message history now re-scrolls to the bottom (`Platform.runLater`) whenever its height changes, so new messages are fully scrolled into view instead of leaving a gap. The previous `setVvalue(1.0)` calls ran before layout updated the content height.

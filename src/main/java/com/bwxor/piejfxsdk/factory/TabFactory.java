@@ -149,6 +149,8 @@ public class TabFactory {
         scrollPane.setFitToWidth(true);
 
         uiState.setMessageHistoryVBox(messageHistoryVBox);
+        // Scroll after layout so the new content height is taken into account (avoids a gap at the bottom)
+        messageHistoryVBox.heightProperty().addListener((_, _, _) -> Platform.runLater(() -> scrollPane.setVvalue(1.0)));
 
         VBox.setVgrow(scrollPane, Priority.ALWAYS);
 

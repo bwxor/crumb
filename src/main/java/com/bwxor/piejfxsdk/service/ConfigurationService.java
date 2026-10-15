@@ -15,6 +15,7 @@ import java.util.Map;
 
 public class ConfigurationService {
     private static final String EMPTY_STRING = "";
+    private static final int INDENT_FACTOR = 2;
 
     public void loadCredentials() throws IOException {
         ConfigurationState configurationState = ConfigurationState.instance;
@@ -102,7 +103,7 @@ public class ConfigurationService {
             config.put("model", "anthropic/claude-haiku-4.5");
             config.put("maxIterations", 50);
 
-            bufferedWriter.write(root.toString());
+            bufferedWriter.write(root.toString(INDENT_FACTOR));
             bufferedWriter.flush();
 
         } catch (IOException e) {
@@ -122,7 +123,7 @@ public class ConfigurationService {
                 root.put("mcpServers", servers);
 
                 try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(mcpFile))) {
-                    bufferedWriter.write(root.toString(2));
+                    bufferedWriter.write(root.toString(INDENT_FACTOR));
                     bufferedWriter.flush();
                 }
             } catch (IOException e) {
@@ -141,17 +142,16 @@ public class ConfigurationService {
             dir.mkdirs();
         }
 
-        // Written by hand so the tools keep a stable, readable order (JSONObject does not guarantee one).
-        StringBuilder json = new StringBuilder("{\n  \"permissions\": {\n");
-        var iterator = PermissionState.DEFAULTS.entrySet().iterator();
-        while (iterator.hasNext()) {
-            var entry = iterator.next();
-            json.append("    \"").append(entry.getKey()).append("\": \"").append(entry.getValue().toJsonValue()).append("\"").append(iterator.hasNext() ? "," : "").append("\n");
+        JSONObject entries = new JSONObject();
+        for (Map.Entry<String, Permission> entry : PermissionState.DEFAULTS.entrySet()) {
+            entries.put(entry.getKey(), entry.getValue().toJsonValue());
         }
-        json.append("  }\n}\n");
+
+        JSONObject root = new JSONObject();
+        root.put("permissions", entries);
 
         try (BufferedWriter bufferedWriter = new BufferedWriter(new FileWriter(permissionsFile))) {
-            bufferedWriter.write(json.toString());
+            bufferedWriter.write(root.toString(INDENT_FACTOR));
             bufferedWriter.flush();
         }
     }
